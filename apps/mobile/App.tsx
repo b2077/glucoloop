@@ -19,7 +19,7 @@ const POLL_MS = 2000; // patient data + proactive recommendations (both via /sta
 // Trio light-mode chrome: iOS system backgrounds, with insulin blue for
 // controls. Glucose dots and the reading use Trio's static scheme from
 // DynamicGlucoseColor.swift — HSB saturation 0.6, brightness 0.9:
-// red at or below 70 mg/dL, green in range, purple at or above 180.
+// red at or below 70 mg/dL, green in range, orange at or above 180.
 const C = {
   ink: "#1C1C1E",
   muted: "#8E8E93",
@@ -32,10 +32,10 @@ const C = {
   accent: "#007AFF",
   low: "#E65C5C",
   inRange: "#5CE65C",
-  high: "#A15CE6",
+  high: "#F5A623",
   lowTint: "rgba(230, 92, 92, 0.12)",
   inRangeTint: "rgba(92, 230, 92, 0.14)",
-  highTint: "rgba(161, 92, 230, 0.12)",
+  highTint: "rgba(245, 166, 35, 0.15)",
   infoTint: "#F2F2F7",
   band: "rgba(92, 230, 92, 0.12)",
 };
@@ -573,7 +573,7 @@ function RecentGlucoseCard() {
     { label: "Low", value: low, color: PIE_COLORS.low },
     { label: "In Range", value: inRange, color: PIE_COLORS.inRange },
     { label: "High", value: high, color: PIE_COLORS.high },
-  ];
+  ].filter((s, i, a) => a.findIndex((x) => x.label === s.label) === i);
   return (
     <Card>
       <Text style={{ fontSize: 18, fontWeight: "800", color: C.ink }}>Recent Glucose Data</Text>
@@ -882,24 +882,45 @@ function Chat({ msgs, setMsgs, autoSend }: { msgs: any[], setMsgs: any, autoSend
   const sendGen = useRef(0);
   // After delete, ignore server history until a poll comes back empty.
   const skipServerHistory = useRef(false);
+  // Persisted "chat was deleted" marker: survives Chat remounts, so server
+  // history is ignored until the server confirms it is empty.
+  const CLEAR_KEY = "ella-chat-cleared";
   // Pick up proactive messages Ella pushed server-side (low-glucose watch)
   const [state] = usePoll(`/state/${PATIENT}`, 15000);
   useEffect(() => {
     const h = state?.chat_history;
+    let cleared = false;
+    try { cleared = typeof localStorage !== "undefined" && !!localStorage.getItem(CLEAR_KEY); } catch {}
+    if (cleared) {
+      if (!h || h.length === 0) {
+        try { localStorage.removeItem(CLEAR_KEY); } catch {}
+        skipServerHistory.current = false;
+      }
+      return;
+    }
     if (skipServerHistory.current) {
       if (!h || h.length === 0) skipServerHistory.current = false;
       return;
     }
     if (h && h.length) {
-      setMsgs((x) => (x.length === 1 && x[0].content.startsWith("Hi! I'm Ella"))
-        ? [x[0], ...h.slice(-19)]
-        : x.some((m) => m.at && h.some((y) => y.at === m.at)) ? x : [...x, ...h.filter((y) => !x.some((m) => m.at && m.at === y.at)).slice(-5)]);
+      setMsgs((x) => {
+        const greetingOnly = x.length === 1 && x[0].content.startsWith("Hi! I'm Ella");
+        const base = greetingOnly ? [x[0]] : x;
+        // Signature: local assistant replies are stored through mmolText()
+        // (mg/dL -> mmol/L), so apply the same conversion to server copies
+        // before comparing — otherwise they never match and re-append.
+        const sig = (m) => `${m.role}|${(m.role === "assistant" ? mmolText(m.content) : m.content).trim()}`;
+        const known = new Set(base.map(sig));
+        const fresh = h.filter((y) => !known.has(sig(y)));
+        return fresh.length ? [...base, ...fresh] : base;
+      });
     }
   }, [state?.chat_history]);
 
   const deleteChat = useCallback(async () => {
     sendGen.current += 1;
     skipServerHistory.current = true;
+    try { localStorage.setItem("ella-chat-cleared", "1"); } catch {}
     setText("");
     setBusy(false);
     setMsgs(CHAT_GREETING.map((m) => ({ ...m })));
