@@ -57,3 +57,16 @@ mobile app → POST /chat/:patient → backend → Mistral Agents API/SDK
 - **Tool-message format drift** across SDK versions → pin `mistralai` version, keep tests.
 - **Cost/latency** vs mock → keep mock as default when key absent.
 - **Demo safety** → rollback plan: unset `MISTRAL_API_KEY`; code path returns to today's behavior instantly.
+
+---
+
+## Post-implementation notes (live-tested, commit 6e33052)
+
+The plan above assumed creating a hosted agent via `POST /v1/agents`. Live testing against api.mistral.ai showed deviations, now implemented:
+
+1. **Agent creation blocked** — this org returns `403 Creating agents is not available for this organization`. Implementation uses `POST /v1/conversations` with **`model` + `tools`** directly (`MISTRAL_AGENT_ID` still honored if set). Also: no `temperature` field on agent/conversation requests (422 `extra_forbidden`).
+2. **System prompt** — base-model conversations reject a `system` role in inputs (422). Workaround: seed the conversation with `[user: SYSTEM_PROMPT, assistant: "Understood…", user: <message>]`.
+3. **Append endpoint** — tool results and follow-up messages go to **`POST /v1/conversations/{conversation_id}`** (not `/messages` — that returns Method Not Allowed).
+4. **Function results** — entry type is **`function.result`** with `tool_call_id` + `result` (string), not `function.call_result`. Model emits `function.call` outputs with a separate `tool_call_id` field.
+5. **`.env` support** — `server.js` has a zero-dep `.env` loader (skipped under `node --test` so tests can force mock mode). Key stays local, gitignored.
+6. **Verified live**: multi-turn chat, `log_checkin` + `predict` tool calls, grounded forecast replies with recommended action + safety disclaimer. 37/37 backend tests pass.
