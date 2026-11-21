@@ -120,7 +120,7 @@ export interface ReadingPoint {
 /* REST surface (all JSON):
  *  GET  /health
  *  POST /ingest                     body: Reading
- *  GET  /state/:patientId           -> { latest, history, checkin, alerts, forecast, active_faults, latest_iob, tir_1h, tir_24h, profile, readings_count }
+ *  GET  /state/:patientId           -> { latest, history, checkin, alerts, forecast, active_faults, latest_iob, tir_1h, tir_24h, profile, readings_count, chat_history: ChatMessage[] }
  *  GET  /forecast/:patientId        -> Forecast
  *  POST /chat/:patientId            body: { message } -> { reply, toolCalls }
  *  GET  /readings/:patientId        -> { patient_id, count, readings: [{ t, glucose_mgdl, glucose_mmol, cgm_quality, hr, activity, iob, pump_status }] }   (full 24 h)

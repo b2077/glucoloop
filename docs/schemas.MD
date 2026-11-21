@@ -88,7 +88,11 @@ GET /state/:patientId
   "latest_pump_status": "ok",
   "profile": { /* PatientProfile, see #7 */ } | null,
   "tir_1h":  { /* TIRResult, see #6 */ },
-  "tir_24h": { /* TIRResult, see #6 */ }
+  "tir_24h": { /* TIRResult, see #6 */ },
+  "chat_history": [              // last 20 messages (for rendering chat on load/reload)
+    { "role": "user", "content": "I ate 60g of carbs" },
+    { "role": "assistant", "content": "Got it — about 60 g of carbs logged..." }
+  ]
 }
 ```
 

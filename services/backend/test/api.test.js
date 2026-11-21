@@ -168,4 +168,22 @@ describe("REST API", () => {
     assert.ok("readings_count" in body);
     assert.ok("profile" in body);
   });
+
+  test("GET /state/:id includes chat_history after chatting", async () => {
+    // Chat twice to build history
+    await post("/chat/chat-hist", { message: "hello" });
+    await post("/chat/chat-hist", { message: "I ate 30g of carbs" });
+    const { status, body } = await get("/state/chat-hist");
+    assert.equal(status, 200);
+    assert.ok(Array.isArray(body.chat_history), "chat_history should be an array");
+    assert.equal(body.chat_history.length, 4); // 2 user + 2 assistant
+    assert.equal(body.chat_history[0].role, "user");
+    assert.equal(body.chat_history[1].role, "assistant");
+    assert.ok(typeof body.chat_history[1].content === "string");
+  });
+
+  test("GET /state/:id chat_history is empty array for new patient", async () => {
+    const { body } = await get("/state/brand-new");
+    assert.deepEqual(body.chat_history, []);
+  });
 });

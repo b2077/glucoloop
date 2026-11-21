@@ -147,8 +147,12 @@ const server = http.createServer(async (req, res) => {
     // -- state --
     const m = path.match(/^\/state\/(.+)$/);
     if (req.method === "GET" && m) {
+      const pid = decodeURIComponent(m[1]);
+      const summary = store.summary(pid);
+      // Include chat history so the FE can render the conversation on load/reload
+      summary.chat_history = (conversations.get(pid) || []).slice(-20);
       done(200);
-      return json(res, 200, store.summary(decodeURIComponent(m[1])));
+      return json(res, 200, summary);
     }
 
     // -- forecast --
