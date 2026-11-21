@@ -94,3 +94,82 @@ test("mockAgent: no data → NO_DATA_REPLY when predict fails", async () => {
   const { reply } = await mockAgent(tools, "what is my glucose level?");
   assert.match(reply, /don't have your CGM/);
 });
+
+// ---- proactive [SYSTEM EVENT] triggers (services/scenario/low_watch.py) ----
+
+const FAKE_FORECAST = {
+  short: { minutes: 5, point: 68.8 },
+  medium: [{ minutes: 5, point: 68.8 }, { minutes: 15, point: 69 }, { minutes: 30, point: 68 },
+           { minutes: 45, point: 68 }, { minutes: 60, point: 75 }],
+  long: [],
+  action: { class: "suspend", probs: { suspend: 0.9 } },
+  model_version: "test",
+};
+
+function fakeTools(forecast = FAKE_FORECAST) {
+  const calls = [];
+  return {
+    deps: {},
+    calls,
+    execute: async (name, args) => {
+      calls.push({ name, args });
+      if (name === "predict") return forecast;
+      return { ok: true, alert: { level: args?.level, message: args?.message } };
+    },
+  };
+}
+
+test("mockAgent: [SYSTEM EVENT] predicted low warns the patient and alerts", async () => {
+  const tools = fakeTools();
+  const { reply, toolCalls } = await mockAgent(
+    tools, "[SYSTEM EVENT — predicted hypoglycemia] forecast min 68 mg/dL at t+45, threshold 70. Inform the patient.");
+  assert.deepEqual(toolCalls, ["predict", "send_alert"]);
+  assert.match(reply, /trending down/);
+  assert.match(reply, /70 mg\/dL/);
+  assert.match(reply, /acknowledge/);
+  const alert = tools.calls.find((c) => c.name === "send_alert");
+  assert.equal(alert.args.level, "warning");
+  assert.equal(alert.args.suggested_action, "suspend");
+});
+
+test("mockAgent: [SYSTEM EVENT] no response starts escalation protocol with critical alert", async () => {
+  const tools = fakeTools();
+  const { reply, toolCalls } = await mockAgent(
+    tools, "[SYSTEM EVENT — no response within the response window] Initiate the no-response escalation protocol now.");
+  assert.deepEqual(toolCalls, ["predict", "send_alert"]);
+  assert.match(reply, /escalation protocol/);
+  const alert = tools.calls.find((c) => c.name === "send_alert");
+  assert.equal(alert.args.level, "critical");
+});
+
+test("mockAgent: [SYSTEM EVENT] with unreachable ML → NO_DATA_REPLY", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps); // mlUrl unreachable
+  const { reply, toolCalls } = await mockAgent(tools, "[SYSTEM EVENT — predicted hypoglycemia] ...");
+  assert.deepEqual(toolCalls, ["predict"]);
+  assert.match(reply, /don't have your CGM|can't forecast/);
+});
+
+test("mockAgent: symptomatic low → critical alert + advice", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps);
+  const { reply, toolCalls } = await mockAgent(tools, "I feel shaky and dizzy");
+  assert.ok(toolCalls.includes("send_alert"));
+  assert.match(reply, /fast carbs/i);
+});
+
+test("mockAgent: treated low → logs carbs", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps);
+  const { reply, toolCalls } = await mockAgent(tools, "juice done");
+  assert.ok(toolCalls.includes("log_checkin"));
+  assert.match(reply, /15g/i);
+});
+
+test("mockAgent: 'fine' status update → acknowledges", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps);
+  const { reply, toolCalls } = await mockAgent(tools, "I'm fine");
+  assert.ok(toolCalls.includes("predict"));
+  assert.match(reply, /Good to hear/i);
+});
