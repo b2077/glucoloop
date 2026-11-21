@@ -6,6 +6,7 @@ import http from "node:http";
 import { Store } from "./state.js";
 import { runAgent } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
+import { APP_HTML } from "./app.js";
 
 const PORT = Number(process.env.PORT || 8100);
 const ML_URL = process.env.ML_URL || "http://localhost:8101";
@@ -29,7 +30,8 @@ function recordRequest(method, path, status, ms) {
 // ---- helpers ------------------------------------------------------------------
 const json = (res, code, obj) => {
   const b = JSON.stringify(obj);
-  res.writeHead(code, { "Content-Type": "application/json", "Content-Length": b.length });
+  res.writeHead(code, { "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(b, "utf8") });
   res.end(b);
 };
 
@@ -89,6 +91,13 @@ const server = http.createServer(async (req, res) => {
       done(200);
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(DASHBOARD_HTML);
+    }
+
+    // -- web app (mobile backup) --
+    if (req.method === "GET" && path === "/app") {
+      done(200);
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(APP_HTML);
     }
 
     // -- metrics --
@@ -189,7 +198,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   server.listen(PORT, () => {
     console.log(`glucoloop backend :${PORT} | ml=${ML_URL} | ` +
                 `agent=${process.env.MISTRAL_API_KEY ? "mistral" : "mock"} | ` +
-                `dashboard=http://localhost:${PORT}/dashboard`);
+                `dashboard=http://localhost:${PORT}/dashboard | app=http://localhost:${PORT}/app`);
   });
 }
 

@@ -1,0 +1,43 @@
+{
+  "action_classes": [
+    "alarm_only",
+    "correction_bolus",
+    "no_op",
+    "reduce_basal",
+    "suspend"
+  ],
+  "point_horizons": [
+    "t5",
+    "t15",
+    "t30",
+    "t45",
+    "t60"
+  ],
+  "blocks": 6,
+  "metrics": {
+    "point": {
+      "t5": 1.5,
+      "t15": 2.1,
+      "t30": 2.8,
+      "t45": 3.6,
+      "t60": 3.9
+    },
+    "long": {
+      "block0_min": 4.8,
+      "block0_max": 15.7,
+      "block1_min": 6.2,
+      "block1_max": 33.4,
+      "block2_min": 6.5,
+      "block2_max": 40.9,
+      "block3_min": 6.7,
+      "block3_max": 36.3,
+      "block4_min": 7.4,
+      "block4_max": 32.1,
+      "block5_min": 7.5,
+      "block5_max": 41.8
+    },
+    "action": {
+      "accuracy": 0.955
+    }
+  }
+}
