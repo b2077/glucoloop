@@ -12,7 +12,8 @@ artifacts to artifacts/ and writes ../../docs/METRICS.md.
 from __future__ import annotations
 
 import json
-from concurrent.futures import ProcessPoolExecutor
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import joblib
@@ -60,6 +61,7 @@ def _fit_clf_job(X, y, Xe, ye):
 
 
 def main():
+    os.environ.setdefault("OMP_NUM_THREADS", "2")  # avoid 8 workers x 16 threads oversubscription
     ART.mkdir(parents=True, exist_ok=True)
     tr = features_from_df(pd.read_csv(DATA / "train.csv"))
     ev = features_from_df(pd.read_csv(DATA / "eval.csv"))
@@ -78,12 +80,12 @@ def main():
 
     metrics = {"point": {}, "long": {}, "action": {}}
     print(f"fitting {len(jobs)} models in parallel...")
-    with ProcessPoolExecutor(max_workers=8) as ex:
+    with ProcessPoolExecutor(max_workers=4) as ex:
         futs = []
         for kind, args in jobs:
             fn = {"point": _fit_point_job, "block": _fit_block_job, "clf": _fit_clf_job}[kind]
             futs.append(ex.submit(fn, *args))
-        for f in futs:
+        for f in as_completed(futs):
             kind, key, model, info = f.result()
             if kind == "point":
                 joblib.dump(model, ART / f"point_{key}.joblib")
