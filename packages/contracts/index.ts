@@ -125,7 +125,7 @@ export interface ReadingPoint {
 /* REST surface (all JSON):
  *  GET  /health
  *  POST /ingest                     body: Reading
- *  GET  /state/:patientId           -> { latest, history, checkin, alerts, forecast, active_faults, latest_iob, tir_1h, tir_24h, profile, readings_count, chat_history: ChatMessage[] }
+ *  GET  /state/:patientId           -> { latest, history, checkin, alerts, forecast, active_faults, latest_iob, tir_1h, tir_24h, profile, readings_count, chat_history: ChatMessage[], recommendations: Recommendation[] }
  *  GET  /forecast/:patientId        -> Forecast
  *  POST /chat/:patientId            body: { message } -> { reply, toolCalls }
  *                                 (messages starting with "[SYSTEM EVENT" are backend-initiated proactive

@@ -75,7 +75,7 @@ def test_main_streams_expected_rows():
     with FakeBackend() as be:
         argv = sys.argv
         sys.argv = ["live_stream.py", "--backend", be.url, "--patient", "test-001",
-                    "--accel", "100000", "--duration", "50", "--seed", "4242"]
+                    "--interval", "0", "--duration", "50", "--seed", "4242"]
         try:
             main()
         finally:
@@ -99,7 +99,7 @@ def test_main_injects_demo_faults():
         argv = sys.argv
         # duration 2200 covers drift (600..720), occlusion (1500..1620); dropout at 2100 not reached
         sys.argv = ["live_stream.py", "--backend", be.url, "--patient", "test-faults",
-                    "--accel", "100000", "--duration", "2200", "--seed", "4242"]
+                    "--interval", "0", "--duration", "2200", "--seed", "4242"]
         try:
             main()
         finally:

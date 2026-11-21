@@ -7,7 +7,7 @@ Demo fault plan (defaults):
     t=2100..2160 CGM dropout    -> agent cross-validates via chat
 
 Usage:
-    python live_stream.py --backend http://localhost:8100 --patient demo-001 --accel 60
+    python live_stream.py --backend http://localhost:8100 --patient demo-001 --interval 3
 """
 from __future__ import annotations
 
@@ -37,7 +37,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend", default="http://localhost:8100")
     ap.add_argument("--patient", default="demo-001")
-    ap.add_argument("--accel", type=float, default=60.0, help="sim minutes per real second")
+    ap.add_argument("--accel", type=float, default=60.0, help="sim minutes per real second (unused for pacing)")
+    ap.add_argument("--interval", type=float, default=3.0,
+                    help="seconds between posted data points (wall clock)")
     ap.add_argument("--duration", type=int, default=2880, help="sim minutes to stream")
     ap.add_argument("--seed", type=int, default=4242)
     a = ap.parse_args()
@@ -49,7 +51,7 @@ def main():
 
     print(f"streaming {a.patient} -> {a.backend} (accel={a.accel}x)")
     print(f"fault plan: {[(f.kind, f.start_min // 60, f.end_min // 60) for f in sc.faults]}")
-    interval = 5.0 / a.accel
+    interval = a.interval
     for _ in range(a.duration // 5):
         row = p.step()
         payload = {

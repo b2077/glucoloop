@@ -165,6 +165,8 @@ const server = http.createServer(async (req, res) => {
       const summary = store.summary(pid);
       // Include chat history so the FE can render the conversation on load/reload
       summary.chat_history = (conversations.get(pid) || []).slice(-20);
+      // Include proactive recommendations so the FE gets them from this single poll
+      summary.recommendations = store.recommendations(pid);
       done(200);
       return json(res, 200, summary);
     }

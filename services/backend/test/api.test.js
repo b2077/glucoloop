@@ -187,6 +187,22 @@ describe("REST API", () => {
     assert.deepEqual(body.chat_history, []);
   });
 
+  test("GET /state/:id includes recommendations (proactive)", async () => {
+    const { status, body } = await get("/state/reco-state");
+    assert.equal(status, 200);
+    assert.ok(Array.isArray(body.recommendations), "recommendations should be an array");
+  });
+
+  test("GET /state/:id returns pushed recommendation", async () => {
+    const mod = await import("../src/server.js");
+    mod.store.addRecommendation("reco-seeded", { type: "hyper_risk", level: "warning", message: "test rec" });
+    const { status, body } = await get("/state/reco-seeded");
+    assert.equal(status, 200);
+    assert.equal(body.recommendations.length, 1);
+    assert.equal(body.recommendations[0].type, "hyper_risk");
+    assert.equal(body.recommendations[0].message, "test rec");
+  });
+
   test("POST /chat/:id response includes context snapshot", async () => {
     const { status, body } = await post("/chat/ctx-api", { message: "hello" });
     assert.equal(status, 200);

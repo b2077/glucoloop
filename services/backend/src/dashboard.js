@@ -7,46 +7,48 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GlucoLoop Backend Dashboard</title>
 <style>
-  :root { --bg:#0f172a; --card:#1e293b; --border:#334155; --text:#e2e8f0; --muted:#94a3b8;
-          --green:#22c55e; --yellow:#eab308; --red:#ef4444; --blue:#3b82f6; --purple:#a855f7; }
+  :root { --bg:#F2F4F7; --card:#FFFFFF; --border:#E5E7EB; --text:#111927; --muted:#6C737F;
+          --green:#3F9A6A; --yellow:#C4923A; --red:#D4726A; --ink:#111927; --surface:#F3F4F6; }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); padding:24px; }
-  h1 { font-size:1.4rem; margin-bottom:4px; }
-  .sub { color:var(--muted); font-size:.85rem; margin-bottom:20px; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); padding:28px; }
+  h1 { font-size:1.5rem; margin-bottom:4px; letter-spacing:-0.03em; font-weight:700; }
+  .sub { color:var(--muted); font-size:.9rem; margin-bottom:22px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
-  .card h2 { font-size:.95rem; margin-bottom:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px;
+          box-shadow:0 4px 14px rgba(7,21,37,.04); }
+  .card h2 { font-size:.95rem; margin-bottom:12px; color:var(--text); font-weight:600; letter-spacing:-0.01em; }
   .card.wide { grid-column:1/-1; }
-  .stat { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:.9rem; }
+  .stat { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:.9rem; }
   .stat:last-child { border-bottom:none; }
   .badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:.75rem; font-weight:600; }
-  .b-green { background:rgba(34,197,94,.15); color:var(--green); }
-  .b-yellow { background:rgba(234,179,8,.15); color:var(--yellow); }
-  .b-red { background:rgba(239,68,68,.15); color:var(--red); }
-  .b-blue { background:rgba(59,130,246,.15); color:var(--blue); }
-  .b-purple { background:rgba(168,85,247,.15); color:var(--purple); }
+  .b-green { background:#F0F6F3; color:var(--green); }
+  .b-yellow { background:#F8F4EC; color:var(--yellow); }
+  .b-red { background:#F8F1F0; color:var(--red); }
+  .b-blue { background:var(--surface); color:var(--ink); }
+  .b-purple { background:var(--surface); color:var(--muted); }
   table { width:100%; border-collapse:collapse; font-size:.82rem; }
-  th,td { text-align:left; padding:5px 6px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th,td { text-align:left; padding:6px 6px; border-bottom:1px solid var(--border); white-space:nowrap; }
   th { color:var(--muted); font-weight:600; position:sticky; top:0; background:var(--card); }
   .table-wrap { max-height:280px; overflow-y:auto; }
-  #chat-log { height:200px; overflow-y:auto; background:var(--bg); border:1px solid var(--border);
-              border-radius:8px; padding:10px; margin-bottom:8px; font-size:.85rem; }
-  .msg-user { color:var(--blue); margin:4px 0; }
+  #chat-log { height:200px; overflow-y:auto; background:var(--surface); border:1px solid var(--border);
+              border-radius:12px; padding:12px; margin-bottom:8px; font-size:.85rem; }
+  .msg-user { color:var(--text); font-weight:600; margin:4px 0; }
   .msg-bot { color:var(--text); margin:4px 0; }
-  .msg-tools { color:var(--yellow); font-size:.75rem; margin:2px 0 6px 12px; }
-  input,button,select { font-size:.85rem; padding:7px 10px; border-radius:6px; border:1px solid var(--border); }
-  input,select { background:var(--bg); color:var(--text); }
+  .msg-tools { color:var(--muted); font-size:.75rem; margin:2px 0 6px 12px; }
+  input,button,select { font-size:.85rem; padding:8px 12px; border-radius:10px; border:1px solid var(--border); }
+  input,select { background:#fff; color:var(--text); }
   input { flex:1; }
-  button { background:var(--blue); color:#fff; border:none; cursor:pointer; }
-  button:hover { opacity:.85; }
+  button { background:var(--ink); color:#fff; border:none; cursor:pointer; border-radius:999px; font-weight:600; padding:8px 16px; }
+  button:hover { background:#071525; }
   .row { display:flex; gap:8px; align-items:center; }
   .refresh-note { color:var(--muted); font-size:.75rem; margin-top:16px; }
   .glucose-cell { font-weight:700; }
-  .g-low { color:var(--red); }
-  .g-high { color:var(--yellow); }
-  .g-normal { color:var(--green); }
-  #chart { width:100%; height:160px; }
-  .legend { display:flex; gap:16px; font-size:.75rem; color:var(--muted); margin-top:4px; }
+  .g-low { color:#E65C5C; }
+  .g-high { color:#A15CE6; }
+  .g-normal { color:#5CE65C; }
+  #chart { width:100%; height:220px; background:#fff; border-radius:8px; display:block; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:.75rem; color:var(--muted); margin-top:6px; align-items:center; }
+  .legend i { display:inline-block; width:8px; height:8px; border-radius:99px; margin-right:4px; vertical-align:middle; }
 </style>
 </head>
 <body>
@@ -83,8 +85,14 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
       <span id="patient-meta" style="font-size:.8rem;color:var(--muted)"></span>
     </div>
     <div id="glucose-chart-wrap">
-      <svg id="chart" preserveAspectRatio="none"></svg>
-      <div class="legend"><span>● glucose mg/dL</span><span style="color:var(--red)">--- low (70)</span><span style="color:var(--yellow)">--- high (180)</span></div>
+      <svg id="chart"></svg>
+      <div class="legend">
+        <span><i style="background:#5CE65C"></i>glucose</span>
+        <span><i style="background:rgba(0,122,255,.55);border-radius:2px"></i>forecast</span>
+        <span style="color:#E65C5C">- - 3.9 low</span>
+        <span style="color:#A15CE6">- - 10 high</span>
+        <span style="color:#34C759">— target</span>
+      </div>
     </div>
     <div class="table-wrap" style="margin-top:10px">
       <table id="readings-table">
@@ -124,7 +132,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <script>
 const $ = id => document.getElementById(id);
 const badge = (txt, cls) => '<span class="badge ' + cls + '">' + txt + '</span>';
-const glucoseClass = g => g === null ? '' : g < 70 ? 'g-low' : g > 180 ? 'g-high' : 'g-normal';
+const glucoseClass = g => g === null ? '' : g <= 70 ? 'g-low' : g >= 180 ? 'g-high' : 'g-normal';
 
 async function refresh() {
   try {
@@ -203,8 +211,12 @@ async function loadPatient() {
         '</tr>';
       }).join('');
     }
-    // Glucose chart (inline SVG)
-    drawChart(s.history.map(r => r.cgm ? r.cgm.glucose_mgdl : null).filter(g => g !== null), s.history.filter(r => r.cgm && r.cgm.glucose_mgdl !== null).map(r => r.t));
+    // Glucose chart — same marks as Trio's main pane (dots, thresholds, cone).
+    const rd = await fetch('/readings/' + encodeURIComponent(pid)).then(r => r.json());
+    const series = (rd.readings && rd.readings.length)
+      ? rd.readings
+      : (s.history || []).map(r => ({ glucose_mgdl: r.cgm ? r.cgm.glucose_mgdl : null }));
+    drawChart(series, s.forecast, s.profile && s.profile.target_mgdl);
     // Checkin
     if (s.checkin) {
       $('checkin').innerHTML = '<div class="stat"><span>Carbs (3h)</span><span>'+(s.checkin.carbs_g ?? '—')+' g</span></div>' +
@@ -230,22 +242,105 @@ async function loadPatient() {
   }
 }
 
-function drawChart(glucoseVals, times) {
+function trioTone(v) {
+  if (v <= 70) return '#E65C5C';
+  if (v >= 180) return '#A15CE6';
+  return '#5CE65C';
+}
+
+function trioDomain(glucose, extras) {
+  const g = glucose.filter(v => v != null && isFinite(v));
+  if (!g.length) return { min: 39, max: 200 };
+  const minG = Math.min.apply(null, g), maxG = Math.max.apply(null, g);
+  const ex = (extras || []).filter(v => v != null && isFinite(v));
+  const maxExtra = ex.length ? Math.max.apply(null, ex) : maxG;
+  const minExtra = ex.length ? Math.min.apply(null, ex) : minG;
+  const maxOverall = Math.max(maxG, Math.min(maxExtra, maxG + 50));
+  const minOverall = Math.min(minG, minExtra);
+  let maxY = 200;
+  if (maxOverall > 200 && maxOverall <= 225) maxY = 250;
+  else if (maxOverall > 225 && maxOverall <= 275) maxY = 300;
+  else if (maxOverall > 275 && maxOverall <= 325) maxY = 350;
+  else if (maxOverall > 325) maxY = 400;
+  return { min: Math.min(minOverall, 50), max: Math.max(maxY, Math.min(minOverall, 50) + 10) };
+}
+
+function drawChart(series, forecast, targetMgdl) {
   const svg = $('chart');
-  const W = svg.clientWidth || 600, H = 160;
+  const W = svg.clientWidth || 600, H = 220;
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  if (!glucoseVals || glucoseVals.length === 0) { svg.innerHTML = '<text x="50%" y="50%" fill="#94a3b8" text-anchor="middle" font-size="12">No glucose data</text>'; return; }
-  const min = Math.min(...glucoseVals, 50), max = Math.max(...glucoseVals, 200);
-  const pad = 10;
-  const x = i => pad + (i / Math.max(glucoseVals.length - 1, 1)) * (W - pad * 2);
-  const y = v => H - pad - ((v - min) / (max - min)) * (H - pad * 2);
-  const pts = glucoseVals.map((v, i) => x(i) + ',' + y(v)).join(' ');
-  const yLow = y(70), yHigh = y(180);
-  svg.innerHTML =
-    '<line x1="0" y1="'+yLow+'" x2="'+W+'" y2="'+yLow+'" stroke="#ef4444" stroke-dasharray="4" stroke-width="1" opacity="0.5"/>' +
-    '<line x1="0" y1="'+yHigh+'" x2="'+W+'" y2="'+yHigh+'" stroke="#eab308" stroke-dasharray="4" stroke-width="1" opacity="0.5"/>' +
-    '<polyline points="'+pts+'" fill="none" stroke="#3b82f6" stroke-width="2"/>' +
-    glucoseVals.map((v, i) => '<circle cx="'+x(i)+'" cy="'+y(v)+'" r="3" fill="#3b82f6"><title>t='+times[i]+'min: '+v+' mg/dL</title></circle>').join('');
+  const vals = (series || []).map(r => r.glucose_mgdl);
+  const known = vals.filter(v => v != null && isFinite(v));
+  if (!known.length) {
+    svg.innerHTML = '<text x="50%" y="50%" fill="#6C737F" text-anchor="middle" font-size="12">No glucose data</text>';
+    return;
+  }
+  const step = 5;
+  const histSpan = Math.max(step, (vals.length - 1) * step);
+  const fut = ((forecast && forecast.medium) || [])
+    .filter(p => p && p.minutes > 0 && p.point != null)
+    .slice().sort((a, b) => a.minutes - b.minutes);
+  const futureSpan = fut.length ? fut[fut.length - 1].minutes : 0;
+  const total = histSpan + futureSpan;
+  const last = known[known.length - 1];
+  const block = forecast && forecast.long && forecast.long[0];
+  const horizon = futureSpan || (block ? block.window_end_h * 60 : 0);
+  const coneAt = (minute, point) => {
+    if (!block || !horizon) return { lo: point - 1, hi: point + 1 };
+    const t = Math.min(1, Math.max(0, minute / horizon));
+    const lo = point + (block.min_q10 - point) * t;
+    const hi = point + (block.max_q90 - point) * t;
+    return { lo: Math.min(lo, hi), hi: Math.max(lo, hi) };
+  };
+  const samples = fut.length ? [{ minutes: 0, point: last }].concat(fut) : [];
+  const extras = [];
+  samples.forEach(s => { const b = coneAt(s.minutes, s.point); extras.push(b.lo, b.hi); });
+  const dom = trioDomain(known, extras);
+  const padL = 8, padR = 40, padT = 12, padB = 22;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const y = v => padT + (1 - (v - dom.min) / (dom.max - dom.min)) * plotH;
+  const xAt = m => padL + (m / total) * plotW;
+  const mmol = v => (v / 18).toFixed(1);
+  const parts = [];
+  const yStep = (dom.max - dom.min) > 250 ? 100 : (dom.max - dom.min) > 140 ? 50 : 40;
+  for (let v = Math.ceil(dom.min / yStep) * yStep; v <= dom.max - 4; v += yStep) {
+    parts.push('<line x1="'+padL+'" y1="'+y(v)+'" x2="'+(padL+plotW)+'" y2="'+y(v)+'" stroke="#C7C7CC" stroke-width="0.5" stroke-dasharray="2 3"/>');
+    parts.push('<text x="'+(W-2)+'" y="'+(y(v)+4)+'" text-anchor="end" font-size="11" fill="#111927">'+mmol(v)+'</text>');
+  }
+  const stride = total <= 360 ? 60 : total <= 720 ? 120 : 240;
+  const relMarks = [];
+  for (let rel = -Math.floor(histSpan / stride) * stride; rel <= futureSpan + 0.1; rel += stride) relMarks.push(rel);
+  if (futureSpan > 0 && !relMarks.some(m => Math.abs(xAt(histSpan + m) - xAt(histSpan + futureSpan)) < 36)) relMarks.push(futureSpan);
+  relMarks.forEach(rel => {
+    const x = xAt(histSpan + rel);
+    if (rel !== 0) parts.push('<line x1="'+x+'" y1="'+padT+'" x2="'+x+'" y2="'+(padT+plotH)+'" stroke="#C7C7CC" stroke-width="0.5" stroke-dasharray="2 3"/>');
+    const label = rel === 0 ? 'now' : (Math.abs(rel) % 60 === 0 ? ((rel > 0 ? '+' : '') + (rel / 60) + 'h') : ((rel > 0 ? '+' : '') + Math.round(rel) + 'm'));
+    parts.push('<text x="'+x+'" y="'+(H-4)+'" text-anchor="middle" font-size="11" fill="#111927">'+label+'</text>');
+  });
+  const target = targetMgdl || 100;
+  if (target > dom.min && target < dom.max)
+    parts.push('<line x1="'+padL+'" y1="'+y(target)+'" x2="'+(padL+plotW)+'" y2="'+y(target)+'" stroke="#34C759" stroke-width="1"/>');
+  if (180 > dom.min && 180 < dom.max)
+    parts.push('<line x1="'+padL+'" y1="'+y(180)+'" x2="'+(padL+plotW)+'" y2="'+y(180)+'" stroke="#A15CE6" stroke-width="1" stroke-dasharray="5 5"/>');
+  if (70 > dom.min && 70 < dom.max)
+    parts.push('<line x1="'+padL+'" y1="'+y(70)+'" x2="'+(padL+plotW)+'" y2="'+y(70)+'" stroke="#E65C5C" stroke-width="1" stroke-dasharray="5 5"/>');
+  if (samples.length > 1) {
+    const upper = [], lower = [];
+    samples.forEach(s => {
+      const b = coneAt(s.minutes, s.point);
+      const x = xAt(histSpan + s.minutes);
+      upper.push(x + ',' + y(b.hi));
+      lower.unshift(x + ',' + y(b.lo));
+    });
+    parts.push('<polygon points="'+upper.concat(lower).join(' ')+'" fill="rgba(0,122,255,0.5)"/>');
+  }
+  const nowX = xAt(histSpan);
+  parts.push('<line x1="'+nowX+'" y1="'+padT+'" x2="'+nowX+'" y2="'+(padT+plotH)+'" stroke="#AEAEB2" stroke-width="2" stroke-dasharray="3 3"/>');
+  vals.forEach((v, i) => {
+    if (v == null || !isFinite(v)) return;
+    parts.push('<circle cx="'+xAt(i * step)+'" cy="'+y(v)+'" r="2.5" fill="'+trioTone(v)+'"><title>'+v+' mg/dL</title></circle>');
+  });
+  svg.innerHTML = parts.join('');
 }
 
 async function sendChat() {
