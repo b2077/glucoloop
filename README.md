@@ -158,7 +158,7 @@ target is that 95% of requests finish within 100 ms.
 
 ## Repository layout
 
-| Path | Contents | Owner (hackathon plan) |
+| Path | Contents | Owner [delete this column after the hackathon] |
 |---|---|---|
 | `services/simulator/` | Physiology model, fault injection, data generation, live stream | Eng 1 |
 | `services/backend/` | REST API, fusion window, Ella agent and its tools | Eng 2 |
