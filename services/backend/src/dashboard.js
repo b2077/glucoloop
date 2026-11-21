@@ -179,6 +179,9 @@ async function loadPatient() {
     const s = await fetch('/state/' + encodeURIComponent(pid)).then(r => r.json());
     // Meta
     $('patient-meta').textContent = s.history.length + ' readings in history · latest t=' + (s.latest ? s.latest.t : 'n/a');
+    if (s.active_faults && s.active_faults.length > 0) {
+      $('patient-meta').innerHTML += ' &nbsp;' + s.active_faults.map(f => badge('⚠ '+f, 'b-red')).join(' ');
+    }
     // Readings table
     const tbody = $('readings-table').querySelector('tbody');
     if (!s.history || s.history.length === 0) {
