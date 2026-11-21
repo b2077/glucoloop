@@ -108,4 +108,64 @@ describe("REST API", () => {
     const { status } = await get("/nope");
     assert.equal(status, 404);
   });
+
+  // ---- FE issue #5: new endpoints ----
+  test("GET /readings/:id returns full history with mmol conversion", async () => {
+    // Ingest a few readings first
+    for (let i = 0; i < 5; i++) {
+      await post("/ingest", {
+        patient_id: "rd-test", type: "cgm", t: i * 5,
+        cgm: { glucose_mgdl: 90 + i * 10, cgm_quality: "ok", hr: 70, activity: "none" },
+        pump: { iob_units: 1, commanded_basal_u_hr: 1.1, delivered_basal_u_hr: 1.1, pump_status: "ok" },
+      });
+    }
+    const { status, body } = await get("/readings/rd-test");
+    assert.equal(status, 200);
+    assert.equal(body.count, 5);
+    assert.equal(body.readings[0].glucose_mmol, 5); // 90/18 = 5.0
+    assert.ok(body.readings[0].glucose_mgdl);
+  });
+
+  test("GET /tir/:id?range=all returns TIR in 4-10 mmol/L", async () => {
+    const { status, body } = await get("/tir/rd-test?range=all");
+    assert.equal(status, 200);
+    assert.equal(body.range.low_mmol, 4);
+    assert.equal(body.range.high_mmol, 10);
+    assert.equal(body.total, 5);
+    assert.ok(body.tir_pct >= 0 && body.tir_pct <= 100);
+  });
+
+  test("GET /tir/:id?range=1h returns 1h window", async () => {
+    const { status, body } = await get("/tir/rd-test?range=1h");
+    assert.equal(status, 200);
+    assert.equal(body.range_label, "1h");
+  });
+
+  test("PUT /profile/:id then GET returns saved profile", async () => {
+    const put = await fetch(base + "/profile/prof-test", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ic_ratio_g_per_u: 12, isf_mgdl_per_u: 45, basal_u_hr: 1.3 }),
+    }).then((r) => r.json());
+    assert.equal(put.profile.ic_ratio_g_per_u, 12);
+    assert.equal(put.profile.basal_u_hr, 1.3);
+
+    const { status, body } = await get("/profile/prof-test");
+    assert.equal(status, 200);
+    assert.equal(body.profile.isf_mgdl_per_u, 45);
+  });
+
+  test("GET /recommendations/:id returns list", async () => {
+    const { status, body } = await get("/recommendations/rd-test");
+    assert.equal(status, 200);
+    assert.ok(Array.isArray(body.recommendations));
+  });
+
+  test("GET /state/:id includes tir_1h, tir_24h, profile, readings_count", async () => {
+    const { status, body } = await get("/state/rd-test");
+    assert.equal(status, 200);
+    assert.ok("tir_1h" in body);
+    assert.ok("tir_24h" in body);
+    assert.ok("readings_count" in body);
+    assert.ok("profile" in body);
+  });
 });

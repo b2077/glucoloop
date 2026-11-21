@@ -131,3 +131,97 @@ test("Store: summary flags cgm_dropout with null glucose", () => {
   assert.deepEqual(sum.active_faults, ["cgm_dropout"]);
   assert.equal(sum.latest_cgm_quality, "dropout");
 });
+
+// ---- TIR tests (FE issue #5.2) ----
+test("Store.tir: computes TIR for 4-10 mmol/L range", () => {
+  const s = new Store();
+  // 10 readings: 5 in range (72-180), 3 low (<72), 2 high (>180)
+  const glucoses = [80, 100, 120, 150, 170, 60, 65, 50, 200, 250];
+  glucoses.forEach((g, i) => {
+    const r = validReading({ patient_id: "tir1", t: i * 5 });
+    r.cgm.glucose_mgdl = g;
+    s.ingest(r);
+  });
+  const tir = s.tir("tir1");
+  assert.equal(tir.total, 10);
+  assert.equal(tir.in_range, 5);
+  assert.equal(tir.tir_pct, 50);
+  assert.equal(tir.low_pct, 30);
+  assert.equal(tir.high_pct, 20);
+  assert.equal(tir.range.low_mmol, 4);
+  assert.equal(tir.range.high_mmol, 10);
+});
+
+test("Store.tir: 1h range only counts recent readings", () => {
+  const s = new Store();
+  for (let i = 0; i < 24; i++) {
+    const r = validReading({ patient_id: "tir2", t: i * 5 });
+    r.cgm.glucose_mgdl = i < 11 ? 200 : 100; // first 11 high (t=0..50), rest in range (t=55..115)
+    s.ingest(r);
+  }
+  const tir1h = s.tir("tir2", 60); // last 60 min from max t=115 → t>=55 → 13 readings, all in range
+  assert.equal(tir1h.total, 13);
+  assert.equal(tir1h.tir_pct, 100);
+  const tirAll = s.tir("tir2", null);
+  assert.equal(tirAll.tir_pct, 54.2); // 13 of 24 in range
+});
+
+test("Store.tir: ignores dropout readings", () => {
+  const s = new Store();
+  for (let i = 0; i < 5; i++) {
+    const r = validReading({ patient_id: "tir3", t: i * 5 });
+    r.cgm.glucose_mgdl = i === 2 ? null : 100;
+    if (i === 2) r.cgm.cgm_quality = "dropout";
+    s.ingest(r);
+  }
+  const tir = s.tir("tir3");
+  assert.equal(tir.total, 4); // dropout excluded
+  assert.equal(tir.tir_pct, 100);
+});
+
+test("Store.tir: empty patient returns null TIR", () => {
+  const s = new Store();
+  const tir = s.tir("nonexistent");
+  assert.equal(tir.tir_pct, null);
+  assert.equal(tir.total, 0);
+});
+
+// ---- Profile tests (FE issue #5.3) ----
+test("Store: setProfile merges with defaults", () => {
+  const s = new Store();
+  const p = s.setProfile("prof1", { ic_ratio_g_per_u: 15, isf_mgdl_per_u: 40 });
+  assert.equal(p.ic_ratio_g_per_u, 15);
+  assert.equal(p.isf_mgdl_per_u, 40);
+  assert.equal(p.basal_u_hr, 1.1); // default
+  assert.ok(p.updated_at);
+  assert.deepEqual(s.getProfile("prof1"), p);
+});
+
+test("Store: getProfile returns null for unknown patient", () => {
+  const s = new Store();
+  assert.equal(s.getProfile("nobody"), null);
+});
+
+// ---- Recommendations tests ----
+test("Store: addRecommendation and recommendations()", () => {
+  const s = new Store();
+  s.addRecommendation("rec1", { type: "hypo_risk", level: "critical", message: "low" });
+  s.addRecommendation("rec1", { type: "hyper_risk", level: "warning", message: "high" });
+  const recs = s.recommendations("rec1");
+  assert.equal(recs.length, 2);
+  assert.equal(recs[0].type, "hypo_risk");
+  assert.ok(recs[0].id);
+  assert.ok(recs[0].created_at);
+});
+
+// ---- allReadings (FE issue #5.1) ----
+test("Store: allReadings returns full history up to MAX", () => {
+  const s = new Store();
+  for (let i = 0; i < 300; i++) {
+    const r = validReading({ patient_id: "hist1", t: i * 5 });
+    s.ingest(r);
+  }
+  const all = s.allReadings("hist1");
+  assert.equal(all.length, 288); // capped at MAX
+  assert.equal(all[0].t, (300 - 288) * 5);
+});
