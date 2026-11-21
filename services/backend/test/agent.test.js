@@ -148,6 +148,8 @@ test("mockAgent: [SYSTEM EVENT] with unreachable ML → NO_DATA_REPLY", async ()
   const { reply, toolCalls } = await mockAgent(tools, "[SYSTEM EVENT — predicted hypoglycemia] ...");
   assert.deepEqual(toolCalls, ["predict"]);
   assert.match(reply, /don't have your CGM|can't forecast/);
+});
+
 test("mockAgent: symptomatic low → critical alert + advice", async () => {
   const deps = makeDeps();
   const tools = makeToolSet(deps);
