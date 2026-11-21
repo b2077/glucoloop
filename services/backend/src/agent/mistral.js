@@ -78,6 +78,18 @@ export async function runAgent(deps, history, userMessage) {
     return mockAgent(tools, userMessage);
   }
 
+  /** Extract plain text from a message content (string or array of thinking/text blocks). */
+  const extractText = (content) => {
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .filter((b) => b.type === "text" && b.text)
+        .map((b) => b.text)
+        .join("\n");
+    }
+    return String(content || "");
+  };
+
   const toolCalls = [];
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const res = await fetchWithRetry(MISTRAL_URL, {
@@ -108,7 +120,7 @@ export async function runAgent(deps, history, userMessage) {
       }
       continue;
     }
-    return { reply: choice.content, toolCalls };
+    return { reply: extractText(choice.content), toolCalls };
   }
   return { reply: "Let me check your latest data again in a moment.", toolCalls };
 }
