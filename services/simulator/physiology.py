@@ -7,6 +7,39 @@ GlucoLoop physiological simulator (Bergman minimal model + behavior + faults).
   (icr=20 g/U, sens=42 mg/dL/U) while the true parameters vary per patient
   (+/-25%). Those mistakes generate the hypo/hyper excursions the ML policy
   learns to prevent.
+
+Public API — function signatures
+--------------------------------
+Data types:
+    Meal(t: int, carbs_g: float)
+    Exercise(t: int, duration_min: int, intensity: float)      # 0..1
+    Stress(t: int, duration_min: int, level: int)               # 1..5
+    Sleep(start_min: int, end_min: int, quality: float)         # 0..1
+    Fault(kind: str, start_min: int, end_min: int, intensity: float = 1.0)
+    Scenario(seed, days, faults, meals, exercises, stresses, sleeps)
+        .manifest() -> dict
+
+Scenario generation:
+    random_scenario(seed: int, days: int = 3, fault_prob: float = 0.85,
+                    heavy_faults: bool = False) -> Scenario
+    run_scenario(sc: Scenario) -> list[dict]
+    expert_label(row: dict, fut60: list[float]) -> str
+
+Patient (simulator core):
+    Patient(sc: Scenario)
+        .step() -> dict              # advance 5 min, return sensor row
+        ._step_min() -> None         # advance 1 min (internal)
+        ._fault(kind: str) -> Fault | None
+
+step() return shape:
+    {"t": int, "minute_of_day": int,
+     "cgm_glucose": float | None, "cgm_quality": str,   # ok | drift | dropout
+     "hr": int, "activity": str,                         # none|light|moderate|intense
+     "commanded_basal": float, "delivered_basal": float,
+     "iob": float, "pump_status": str,                   # ok | occlusion | leakage
+     "carbs_g_3h": float, "exercise_min_2h": int,
+     "sleep_hours_last": float, "stress_1_5": int,
+     "true_glucose": float}                              # ground truth (training only)
 """
 from __future__ import annotations
 
