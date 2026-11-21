@@ -441,6 +441,16 @@ function Chat() {
   const [msgs, setMsgs] = useState([{ role: "assistant", content: "Hi! I'm Ella. How are you feeling today?" }]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // Pick up proactive messages Ella pushed server-side (low-glucose watch)
+  const [state] = usePoll(`/state/${PATIENT}`, 15000);
+  useEffect(() => {
+    const h = state?.chat_history;
+    if (h && h.length) {
+      setMsgs((x) => (x.length === 1 && x[0].content.startsWith("Hi! I'm Ella"))
+        ? [x[0], ...h.slice(-19)]
+        : x.some((m) => m.at && h.some((y) => y.at === m.at)) ? x : [...x, ...h.filter((y) => !x.some((m) => m.at && m.at === y.at)).slice(-5)]);
+    }
+  }, [state?.chat_history]);
 
   const send = useCallback(async () => {
     const m = text.trim();
@@ -470,6 +480,11 @@ function Chat() {
         keyExtractor={(_, i) => String(i)}
         renderItem={({ item }) => (
           <View style={[s.bubble, item.role === "user" ? s.bubbleUser : s.bubbleElla]}>
+            {item.proactive ? (
+              <Text style={{ fontSize: 10, fontWeight: "700", color: item.level === "critical" ? "#C62828" : "#EF6C00", marginBottom: 2 }}>
+                📣 ELLA REACHED OUT{item.level ? ` · ${item.level.toUpperCase()}` : ""}
+              </Text>
+            ) : null}
             <Text style={item.role === "user" ? { color: "#fff" } : {}}>{item.content}</Text>
           </View>
         )}

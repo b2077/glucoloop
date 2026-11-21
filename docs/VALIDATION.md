@@ -44,7 +44,7 @@ backend forecast route, updated a check-in through mock chat, propagated sensor
 drift, rejected a fully missing window and returned an error after ML stopped.
 The first run exposed truncated Unicode JSON chat replies; a focused test
 reproduced the failure and the backend response writer was corrected. The
-backend suite now has 72 passing tests. The simulator's standalone runners
+backend suite passed 72 tests at that merge; the updated suite is recorded below. The simulator's standalone runners
 passed all 31 tests (21 physiology, six dataset generation and four streaming).
 The isolated backend uses test mode to skip environment-file loading and turns
 off the periodic recommendation timer; it does not validate that timer's dosing
@@ -77,8 +77,8 @@ Main now tracks the generated datasets and eighteen model artifacts. This PR
 preserves main's incoming datasets and binaries exactly; locally retrained
 replacement binaries used for these checks are not committed. Run training
 before serving so the models match the causal feature path. No real OpenAPS
-records have been acquired, and a new personalization demonstration has not
-been implemented.
+records have been acquired. A separate simulation personalisation demonstration
+is now implemented, as described below.
 
 ## Separate simulation personalisation page — 2026-11-21
 

@@ -1,4 +1,5 @@
 {
+  "port": 18130,
   "baseline_mgdl": 110,
   "step_minutes": 5,
   "total_minutes": 300,
@@ -8,11 +9,32 @@
   "prior_observations": 4,
   "low_mgdl": 70,
   "high_mgdl": 180,
-  "observation_noise_mgdl": [-2, 2, -1, 1],
+  "observation_noise_mgdl": [
+    -2,
+    2,
+    -1,
+    1
+  ],
   "scenarios": {
-    "meal": {"label": "Meal", "initial_delta_mgdl": 55, "simulated_delta_mgdl": 70},
-    "exercise": {"label": "Moderate exercise", "initial_delta_mgdl": -20, "simulated_delta_mgdl": -30},
-    "intense": {"label": "Intense exercise", "initial_delta_mgdl": 15, "simulated_delta_mgdl": 25},
-    "stress": {"label": "Stress", "initial_delta_mgdl": 25, "simulated_delta_mgdl": 40}
+    "meal": {
+      "label": "Meal",
+      "initial_delta_mgdl": 55,
+      "simulated_delta_mgdl": 70
+    },
+    "exercise": {
+      "label": "Moderate exercise",
+      "initial_delta_mgdl": -20,
+      "simulated_delta_mgdl": -30
+    },
+    "intense": {
+      "label": "Intense exercise",
+      "initial_delta_mgdl": 15,
+      "simulated_delta_mgdl": 25
+    },
+    "stress": {
+      "label": "Stress",
+      "initial_delta_mgdl": 25,
+      "simulated_delta_mgdl": 40
+    }
   }
 }

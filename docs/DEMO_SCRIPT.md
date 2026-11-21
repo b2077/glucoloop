@@ -7,17 +7,45 @@ examples, informed only qualitatively by the sources in `OPENHUMANS_TOOLS.md`.
 
 ## Start and open
 
-From the repository root, with Node 22 available:
+On your colleague's computer, install Git and Node 22, including npm. In a
+terminal opened in the folder where they keep projects, obtain this PR branch:
 
 ```bash
-NODE_ENV=test RECO_INTERVAL_S=0 PORT=18130 node services/backend/src/server.js
+git clone --branch feat/parallel-fast-training https://github.com/b2077/glucoloop.git
+cd glucoloop
+node --version
+npm --version
+```
+
+GitHub access is required if the repository is private. If they already have a
+checkout, save any local changes first, then fetch and switch to this branch.
+There is no need to download patient data, copy model files or share secrets.
+From the repository root, run the same command on Windows, macOS or Linux:
+
+```bash
+npm run demo --prefix services/backend
 ```
 
 Open `http://localhost:18130/demo`, or select the demonstration link on
-`http://localhost:18130/dashboard`. Test mode skips environment-file loading;
-the disabled recommendation timer keeps this presentation independent of ML
-and chat services. The page works on desktop and mobile browsers; small screens
+`http://localhost:18130/dashboard`. The portable launcher skips environment-file loading and background alert
+timers, keeping this presentation independent of ML and chat services. The page works on desktop and mobile browsers; small screens
 can scroll the chart horizontally. Stop the foreground server with Ctrl+C.
+No `npm install` is needed: the backend uses Node's built-in libraries. Keep
+the terminal open. If the port is occupied, edit `port` in
+`services/backend/src/demo-config.json` and use the printed address.
+This local address belongs to their own computer, not the author's machine.
+It does not publish the application to the internet.
+
+To check the code on their machine, run:
+
+```bash
+npm test --prefix services/backend
+```
+
+The full trained-model workflow is separate. It needs Python 3.11+, the packages
+in `services/ml/requirements.txt` and freshly trained models. Follow the root
+README's ML → backend → simulator instructions; the standalone chart does not
+prove that their Python installation or full mobile workflow works.
 
 ## Walkthrough
 

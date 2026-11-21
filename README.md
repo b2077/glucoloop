@@ -109,7 +109,7 @@ establish performance on real patients.
 
 ## Running it
 
-Each service runs in its own terminal. Start them in this order, because each
+The full workflow needs Python 3.11+ and Node 22. Each service runs in its own terminal. Start them in this order, because each
 one calls the one before it. Main tracks generated datasets and model files,
 but this PR preserves its incoming binaries rather than committing replacements.
 Train once before serving so the saved models match the updated feature builder.
@@ -120,7 +120,7 @@ pip install -r requirements.txt
 python -u train.py              # fits and evaluates all 18 models on the supplied data
 python predict_api.py            # or: uvicorn predict_api:app --port 8101
 
-# 2) Backend fusion service and chat agent on port 8100 (Node 18+, no installs), from services/backend
+# 2) Backend fusion service and chat agent on port 8100 (Node 22, no installs), from services/backend
 node src/server.js               # set MISTRAL_API_KEY for the real Ella, otherwise a scripted mock is used
 
 # 3) Simulated devices, from services/simulator
@@ -152,6 +152,17 @@ finishes. The verified run on 24 training and six evaluation scenarios used
 without any usable sensor reading are excluded during training and rejected
 when predicting, rather than filled from future observations.
 
+## Proactive low-glucose watch (Ella reaches out first)
+
+A background pass in the backend (`PROACTIVE_CHAT_INTERVAL_S`, default 30 s) detects
+low or fast-dropping glucose **and** a predicted horizon minimum below threshold
+(cached ML forecast), then initiates a chat turn through the agent with a
+`[SYSTEM EVENT …]` message — so the warning is composed by Ella in mock and real
+(Mistral) mode alike. If the patient doesn't reply within the response window, the
+no-response protocol escalates (critical alert). Thresholds live in
+`services/scenario/config.low_watch.json` (env-overridable via `PROACTIVE_*`).
+
+
 ## Questions and situations for the demo
 
 These are presentation questions, not guaranteed Ella chat commands. The trained
@@ -171,16 +182,18 @@ evaluation are simulated; these examples do not establish patient accuracy.
 For a standalone presentation, run this from the repository root with Node 22:
 
 ```bash
-NODE_ENV=test RECO_INTERVAL_S=0 PORT=18130 node services/backend/src/server.js
+npm run demo --prefix services/backend
 ```
 
 Open `http://localhost:18130/demo`. No trained models or credentials are needed.
 Choose **Moderate exercise** and add four simulated observations: the initial
 -20 mg/dL peak change adapts to -25, toward a simulated personal change of -30.
 These are absolute changes, not percentages or literature averages. Each event
-learns separately; reset or reload clears the corresponding history. The page
+learns separately; reset clears that event and reload clears all histories. The page
 never changes insulin delivery. See `docs/DEMO_SCRIPT.md` for the walkthrough
 and `docs/OPENHUMANS_TOOLS.md` for sources and data-access limits.
+`docs/DEMO_SCRIPT.md` also includes clone instructions for a colleague's computer;
+the standalone launcher works with Windows, macOS and Linux command syntax.
 
 ## Configuration and tests
 
@@ -222,6 +235,7 @@ how the Bergman simulator already supplies training data to the learned models.
 | `apps/mobile/` | Expo app with recommendation cards | Eng 4 |
 | `packages/contracts/index.ts` | Shared payload types. Update these if you change a payload. | Team |
 | `docs/` | `DEMO_SCRIPT.md`, `METRICS.md`, `LATENCY.json`, `WORK_PLAN.md` | Presenter |
+| `services/scenario/` | Scripted low-glucose scenario and watcher; see its README | Scenario team |
 
 `DESIGN_CHOICES.md` records why things were done a certain way, and
 `DEFERRED_WORK.md` lists agreed work that has not been done yet.
