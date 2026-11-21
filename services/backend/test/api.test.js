@@ -186,4 +186,11 @@ describe("REST API", () => {
     const { body } = await get("/state/brand-new");
     assert.deepEqual(body.chat_history, []);
   });
+
+  test("POST /chat/:id response includes context snapshot", async () => {
+    const { status, body } = await post("/chat/ctx-api", { message: "hello" });
+    assert.equal(status, 200);
+    assert.ok(typeof body.context === "string");
+    assert.match(body.context, /\[CURRENT PATIENT CONTEXT — patient: ctx-api\]/);
+  });
 });

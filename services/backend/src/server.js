@@ -25,6 +25,7 @@ import { Store } from "./state.js";
 import { runAgent } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
 import { runRecommendationPass } from "./recommend.js";
+import { buildAgentContext } from "./agent/context.js";
 
 const PORT = Number(process.env.PORT || 8100);
 const ML_URL = process.env.ML_URL || "http://localhost:8101";
@@ -193,7 +194,9 @@ const server = http.createServer(async (req, res) => {
                      { role: "assistant", content: reply });
         conversations.set(patientId, history.slice(-20));
         done(200);
-        return json(res, 200, { reply, toolCalls });
+        // Include the context snapshot sent to the LLM (for FE debugging/transparency)
+        return json(res, 200, { reply, toolCalls,
+          context: buildAgentContext(store, patientId) });
       } catch (exc) {
         done(500);
         return json(res, 500, { error: `agent failed: ${exc.message}` });
