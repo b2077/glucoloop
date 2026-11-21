@@ -28,10 +28,16 @@ function recordRequest(method, path, status, ms) {
 }
 
 // ---- helpers ------------------------------------------------------------------
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 const json = (res, code, obj) => {
   const b = JSON.stringify(obj);
   res.writeHead(code, { "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(b, "utf8") });
+    "Content-Length": Buffer.byteLength(b, "utf8"), ...CORS_HEADERS });
   res.end(b);
 };
 
@@ -66,6 +72,12 @@ const server = http.createServer(async (req, res) => {
   const t0 = performance.now();
   const url = new URL(req.url || "/", `http://localhost:${PORT}`);
   const path = url.pathname;
+
+  // CORS preflight (browser POSTs with Content-Type: application/json need it)
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, CORS_HEADERS);
+    return res.end();
+  }
 
   // Wrap handler so we always record metrics, even on thrown errors
   const done = (status) => {
