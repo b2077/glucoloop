@@ -19,7 +19,8 @@ import joblib
 from features import features_from_window
 
 ART = Path(__file__).resolve().parent / "artifacts"
-MODEL_NAMES = ["t5", "t15", "t30", "t45", "t60"]
+MODEL_NAMES = ["t5", "t60"]  # endpoints only; t15/t30/t45 interpolated
+MEDIUM_MINUTES = [5, 15, 30, 45, 60]
 
 
 class Predictor:
@@ -42,16 +43,28 @@ class Predictor:
         row = np.array([fv], dtype=float)
 
         short = float(self.points["t5"].predict(row)[0])
-        medium = [{"minutes": 5, "point": round(short, 1)}]
-        for n, mins in zip(MODEL_NAMES[1:], [15, 30, 45, 60]):
-            medium.append({"minutes": mins, "point": round(float(self.points[n].predict(row)[0]), 1)})
+        long_end = float(self.points["t60"].predict(row)[0])
+        # linear interpolation between the two trained endpoint horizons
+        medium = [{"minutes": m,
+                   "point": round(short + (long_end - short) * (m - 5) / 55.0, 1)}
+                  for m in MEDIUM_MINUTES]
 
         long_blocks = []
         for b in range(6):
-            if (b, "min") not in self.blocks:
+            if (b, "min") in self.blocks:
+                q10 = float(self.blocks[(b, "min")].predict(row)[0])
+                q90 = float(self.blocks[(b, "max")].predict(row)[0])
+            elif b == 0:
                 continue
-            q10 = float(self.blocks[(b, "min")].predict(row)[0])
-            q90 = float(self.blocks[(b, "max")].predict(row)[0])
+            else:  # odd block: interpolate between neighboring trained even blocks
+                lo = self.blocks.get((b - 1, "min"))
+                hi = self.blocks.get((b + 1, "min"))
+                if lo is None or hi is None:
+                    continue
+                q10 = (float(lo.predict(row)[0]) + float(hi.predict(row)[0])) / 2
+                lo = self.blocks.get((b - 1, "max"))
+                hi = self.blocks.get((b + 1, "max"))
+                q90 = (float(lo.predict(row)[0]) + float(hi.predict(row)[0])) / 2
             long_blocks.append({
                 "window_start_h": 4 * b, "window_end_h": 4 * (b + 1),
                 "min_q10": round(q10, 1), "max_q90": round(q90, 1),

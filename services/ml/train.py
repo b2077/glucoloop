@@ -27,8 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data" / "generated"
 ART = Path(__file__).resolve().parent / "artifacts"
 DOCS = ROOT / "docs"
-POINT_HORIZONS = {"t5": "f_g_t5", "t15": "f_g_t15", "t30": "f_g_t30",
-                  "t45": "f_g_t45", "t60": "f_g_t60"}
+POINT_HORIZONS = {"t5": "f_g_t5", "t60": "f_g_t60"}  # endpoints only; medium horizons interpolated at serve time
 
 
 def _fit_point_job(name, X, y_raw, Xe, ye_raw):
@@ -71,7 +70,7 @@ def main():
     for name, col in POINT_HORIZONS.items():
         jobs.append(("point", (name, X, tr[col].values.astype(float),
                                Xe, ev[col].values.astype(float))))
-    for b in range(6):
+    for b in range(0, 6, 2):  # even blocks only; odd blocks interpolated at serve time
         for stat, q in (("min", 0.1), ("max", 0.9)):
             jobs.append(("block", (b, stat, q, X, tr[f"b{b}_{stat}"].values.astype(float),
                                    Xe, ev[f"b{b}_{stat}"].values.astype(float))))
