@@ -125,7 +125,7 @@ function GlucoseLine({ values, height = 96 }) {
 
 // ------------------------------------------------------------- mini bar chart
 // Deterministic 24 h synthetic series (5-min cadence) used to render the
-// dashboard/insights graphs. Backend untouched; live endpoints stay live.
+// insights pie/calendar mockups. Backend untouched; live endpoints stay live.
 function mockSeries(shape, n = 288) {
   const out = [];
   for (let i = 0; i < n; i++) {
@@ -143,13 +143,12 @@ function mockSeries(shape, n = 288) {
   }
   return out;
 }
-const MOCK_HISTORY = mockSeries((p) => ({ cgm: { glucose_mgdl: p.g }, ts: p.ts }));
 const MOCK_WEEK = mockSeries((p) => ({ cgm: { glucose_mgdl: p.g }, ts: p.ts }), 7 * 288);
 
 // ------------------------------------------------------------------ screens
 const TIR_RANGES = [
-  { id: "1h", label: "1 h", minutes: 60 },
-  { id: "24h", label: "24 h", minutes: 1440 },
+  { id: "1h", label: "1 h" },
+  { id: "24h", label: "24 h" },
 ];
 
 function TirCard({ state }) {
@@ -173,9 +172,11 @@ function TirCard({ state }) {
         <>
           <Text style={{ fontSize: 34, fontWeight: "800" }}>{Math.round(pct)}%</Text>
           <View style={{ height: 12, borderRadius: 6, backgroundColor: "#EAEEF3", overflow: "hidden", marginTop: 8, flexDirection: "row" }}>
+            {/* /tir Result carries percentages (low_pct/high_pct), not counts —
+                see TIRResult in packages/contracts/index.ts. */}
             <View style={{ width: `${Math.min(100, tir.in_range / Math.max(1, tir.total) * 100)}%`, backgroundColor: "#2E7D32" }} />
-            <View style={{ width: `${Math.min(100, tir.low / Math.max(1, tir.total) * 100)}%`, backgroundColor: "#C62828" }} />
-            <View style={{ flex: 1, backgroundColor: "#EF6C00" }} />
+            <View style={{ width: `${Math.min(100, tir.low_pct ?? 0)}%`, backgroundColor: "#C62828" }} />
+            <View style={{ width: `${Math.min(100, tir.high_pct ?? 0)}%`, backgroundColor: "#EF6C00" }} />
           </View>
           <Text style={s.dim}>
             {tir.in_range}/{tir.total} in range · {Math.round(tir.low_pct ?? 0)}% low · {Math.round(tir.high_pct ?? 0)}% high
@@ -495,9 +496,12 @@ function Insights() {
   const profile = state?.profile;
 
   // Downsample the 24 h readings (up to 288) for the chart.
-  // Mock series for the 24 h graph (frontend only), displayed in mmol/L.
-  const all = MOCK_HISTORY.map((r) => r.cgm.glucose_mgdl);
-  const mockCount = all.length;
+  // GET /readings/:patientId returns flattened points — { t, glucose_mgdl,
+  // glucose_mmol, ... } (ReadingPoint in packages/contracts/index.ts). There is
+  // no .cgm wrapper here; only state.history items carry .cgm (SparkGlucose).
+  const all = (readings?.readings ?? [])
+    .map((r) => r.glucose_mgdl)
+    .filter((x) => x != null);
   const pts = [];
   if (all.length > 1) {
     const step = Math.max(1, Math.floor(all.length / 96));
@@ -523,7 +527,7 @@ function Insights() {
               })}
             </View>
             <Text style={s.dim}>
-              {mockCount} readings (demo) · 5-min cadence · red under 4, orange over 10 mmol/L
+              {all.length} readings · red under 4, orange over 10 mmol/L
             </Text>
           </>
         )}
