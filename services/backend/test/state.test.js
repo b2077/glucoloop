@@ -91,3 +91,43 @@ test("Store: metrics aggregates patients", () => {
   assert.equal(pa.readings_count, 1);
   assert.equal(pa.alerts_count, 1);
 });
+
+test("Store: summary includes active_faults (none when healthy)", () => {
+  const s = new Store();
+  s.ingest(validReading({ patient_id: "f1" }));
+  const sum = s.summary("f1");
+  assert.deepEqual(sum.active_faults, []);
+  assert.equal(sum.latest_cgm_quality, "ok");
+  assert.equal(sum.latest_pump_status, "ok");
+  assert.ok(typeof sum.latest_iob === "number");
+});
+
+test("Store: summary flags cgm_drift and pump occlusion", () => {
+  const s = new Store();
+  const drift = validReading({ patient_id: "f2", t: 0 });
+  drift.cgm.cgm_quality = "drift";
+  s.ingest(drift);
+  let sum = s.summary("f2");
+  assert.deepEqual(sum.active_faults, ["cgm_drift"]);
+
+  const occ = validReading({ patient_id: "f2", t: 5 });
+  occ.cgm.cgm_quality = "ok";
+  occ.pump.pump_status = "occlusion";
+  occ.pump.iob_units = 0.1;
+  s.ingest(occ);
+  sum = s.summary("f2");
+  assert.deepEqual(sum.active_faults, ["occlusion"]);
+  assert.equal(sum.latest_iob, 0.1);
+  assert.equal(sum.latest_pump_status, "occlusion");
+});
+
+test("Store: summary flags cgm_dropout with null glucose", () => {
+  const s = new Store();
+  const drop = validReading({ patient_id: "f3", t: 0 });
+  drop.cgm.glucose_mgdl = null;
+  drop.cgm.cgm_quality = "dropout";
+  s.ingest(drop);
+  const sum = s.summary("f3");
+  assert.deepEqual(sum.active_faults, ["cgm_dropout"]);
+  assert.equal(sum.latest_cgm_quality, "dropout");
+});

@@ -92,13 +92,28 @@ export class Store {
 
   summary(patientId) {
     const s = this.get(patientId);
+    const latest = s.readings[s.readings.length - 1] || null;
+    // Surface active device faults so consumers (mobile app, dashboard, tests)
+    // can see CGM drift/dropout and pump faults at a glance — addresses the
+    // "IOB collapse must be visible in /state" integration check.
+    const activeFaults = [];
+    if (latest) {
+      if (latest.cgm?.cgm_quality === "drift") activeFaults.push("cgm_drift");
+      if (latest.cgm?.cgm_quality === "dropout") activeFaults.push("cgm_dropout");
+      if (latest.pump?.pump_status && latest.pump.pump_status !== "ok")
+        activeFaults.push(latest.pump.pump_status);
+    }
     return {
       patient_id: patientId,
-      latest: s.readings[s.readings.length - 1] || null,
+      latest,
       history: s.readings.slice(-24),
       checkin: this.latestCheckin(patientId),
       alerts: s.alerts.slice(-10),
       forecast: s.lastForecast,
+      active_faults: activeFaults,
+      latest_iob: latest?.pump?.iob_units ?? null,
+      latest_cgm_quality: latest?.cgm?.cgm_quality ?? null,
+      latest_pump_status: latest?.pump?.pump_status ?? null,
     };
   }
 
