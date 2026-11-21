@@ -25,6 +25,7 @@ import { Store } from "./state.js";
 import { runAgent } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
 import { runRecommendationPass } from "./recommend.js";
+import { runProactiveChatPass } from "./agent/proactive.js";
 import { buildAgentContext } from "./agent/context.js";
 
 const PORT = Number(process.env.PORT || 8100);
@@ -311,6 +312,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       }
     }, RECO_INTERVAL_S * 1000);
     timer.unref(); // don't keep process alive just for this
+  }
+
+  // Background proactive chat engine — Ella initiates when glucose drops.
+  // Runs every PROACTIVE_CHAT_INTERVAL_S (default 30s).
+  const PROACTIVE_CHAT_INTERVAL_S = Number(process.env.PROACTIVE_CHAT_INTERVAL_S || 30);
+  if (PROACTIVE_CHAT_INTERVAL_S > 0) {
+    const chatTimer = setInterval(() => {
+      try {
+        const n = runProactiveChatPass(store, conversations);
+        if (n > 0) console.log(`[proactive-chat] Ella reached out to ${n} patient(s)`);
+      } catch (e) {
+        console.error(`[proactive-chat] pass failed: ${e.message}`);
+      }
+    }, PROACTIVE_CHAT_INTERVAL_S * 1000);
+    chatTimer.unref();
   }
 }
 

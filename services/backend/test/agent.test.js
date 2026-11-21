@@ -94,3 +94,27 @@ test("mockAgent: no data → NO_DATA_REPLY when predict fails", async () => {
   const { reply } = await mockAgent(tools, "what is my glucose level?");
   assert.match(reply, /don't have your CGM/);
 });
+
+test("mockAgent: symptomatic low → critical alert + advice", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps);
+  const { reply, toolCalls } = await mockAgent(tools, "I feel shaky and dizzy");
+  assert.ok(toolCalls.includes("send_alert"));
+  assert.match(reply, /fast carbs/i);
+});
+
+test("mockAgent: treated low → logs carbs", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps);
+  const { reply, toolCalls } = await mockAgent(tools, "juice done");
+  assert.ok(toolCalls.includes("log_checkin"));
+  assert.match(reply, /15g/i);
+});
+
+test("mockAgent: 'fine' status update → acknowledges", async () => {
+  const deps = makeDeps();
+  const tools = makeToolSet(deps);
+  const { reply, toolCalls } = await mockAgent(tools, "I'm fine");
+  assert.ok(toolCalls.includes("predict"));
+  assert.match(reply, /Good to hear/i);
+});

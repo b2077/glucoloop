@@ -248,6 +248,48 @@ export async function mockAgent(tools, msg) {
       `How much did you eat in the last few hours?`,
       toolCalls: ["log_checkin", "predict"] };
   }
+  // Status update in response to a proactive low-glucose heads-up
+  if (/(fine|ok|okay|good|shaky|sweaty|dizzy|hypo|treated|juice|snack|low|dropping|falling|dropped)/.test(m)) {
+    const f = await call("predict", {});
+    const isSymptomatic = /(shaky|sweaty|dizzy|hypo)/.test(m);
+    const treated = /(treated|juice|snack|ate)/.test(m);
+
+    if (isSymptomatic && !treated) {
+      await call("send_alert", {
+        level: "critical",
+        message: `Patient reports hypo symptoms (shaky/sweaty/dizzy) at low glucose. ` +
+                 `Recommend immediate fast carbs (~15g) and monitor.`,
+        suggested_action: "no_op",
+      });
+      const outlook = f && !f.error
+        ? ` Forecast: ${f.short.point} mg/dL in 5 min, ${f.medium[f.medium.length - 1].point} in 1 h.`
+        : "";
+      return { reply:
+        `I'm glad you told me — shaky/sweaty/dizzy means your body needs sugar **now**. ` +
+        `Have ~15g of fast carbs (juice, glucose tabs) and stay somewhere safe.${outlook} ` +
+        `I've flagged this on your dashboard. Let me know once you've treated it.`,
+        toolCalls: ["predict", "send_alert"] };
+    }
+    if (treated) {
+      await call("log_checkin", { carbs_g: 15 });
+      const outlook = f && !f.error
+        ? ` Forecast: ${f.short.point} mg/dL in 5 min, trending to ${f.medium[f.medium.length - 1].point} in 1 h.`
+        : "";
+      return { reply:
+        `Good — I've logged ~15g of fast carbs.${outlook} Keep an eye on your CGM over the next ` +
+        `30 min. If you still feel off or the numbers keep dropping, have another 15g and tell me. ` +
+        `Anything else on your mind?`,
+        toolCalls: ["log_checkin", "predict"] };
+    }
+    // Just "fine" / "ok" — acknowledge and keep monitoring
+    const outlook = f && !f.error
+      ? ` Right now: ${f.short.point} mg/dL in 5 min, ${f.medium[f.medium.length - 1].point} in 1 h.`
+      : "";
+    return { reply:
+      `Good to hear.${outlook} I'll keep watching your numbers — if the trend continues down ` +
+      `I'll check in again. Anything you want to log (food, insulin, activity)?`,
+      toolCalls: ["predict"] };
+  }
   if (/(sugar|glucose|reading|forecast|predict|level|how am i|status|feel|shaky)/.test(m)) {
     const f = await call("predict", {});
     if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
