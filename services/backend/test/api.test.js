@@ -182,6 +182,18 @@ describe("REST API", () => {
     assert.ok(typeof body.chat_history[1].content === "string");
   });
 
+  test("DELETE /chat/:id clears chat_history", async () => {
+    await post("/chat/del-chat", { message: "hello" });
+    const before = await get("/state/del-chat");
+    assert.ok(before.body.chat_history.length > 0);
+    const r = await fetch(base + "/chat/del-chat", { method: "DELETE" });
+    const body = await r.json();
+    assert.equal(r.status, 200);
+    assert.equal(body.status, "cleared");
+    const after = await get("/state/del-chat");
+    assert.deepEqual(after.body.chat_history, []);
+  });
+
   test("GET /state/:id chat_history is empty array for new patient", async () => {
     const { body } = await get("/state/brand-new");
     assert.deepEqual(body.chat_history, []);

@@ -42,11 +42,18 @@ def main():
                     help="seconds between posted data points (wall clock)")
     ap.add_argument("--duration", type=int, default=2880, help="sim minutes to stream")
     ap.add_argument("--seed", type=int, default=4242)
+    ap.add_argument("--fault-scale", type=float, default=1.0,
+                    help="scales demo fault windows (0.25 -> 4x faster scenario)")
     a = ap.parse_args()
-
+    s = a.fault_scale
     sc = random_scenario(a.seed, days=3)
     extra = [f for f in sc.faults if f.kind == "pump_leakage"][:2]
-    sc.faults = sorted([*DEMO_FAULTS, *extra], key=lambda f: f.start_min)
+    demo_faults = [
+        Fault("cgm_drift", int(600 * s), int(720 * s), 1.2),
+        Fault("pump_occlusion", int(1500 * s), int(1620 * s), 1.0),
+        Fault("cgm_dropout", int(2100 * s), int(2160 * s), 1.0),
+    ]
+    sc.faults = sorted([*demo_faults, *extra], key=lambda f: f.start_min)
     p = Patient(sc)
 
     print(f"streaming {a.patient} -> {a.backend} (accel={a.accel}x)")

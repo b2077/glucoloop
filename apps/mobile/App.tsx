@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   SafeAreaView, View, Text, TextInput, Pressable, FlatList,
-  StyleSheet, ScrollView, ActivityIndicator, Animated,
+  StyleSheet, ScrollView, ActivityIndicator, Animated, Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
@@ -694,8 +694,11 @@ function TIRCalendar() {
 
 // Proactive recommendations now arrive with the single /state poll (BE adds
 // `recommendations` to /state/:patientId) instead of a separate /recommendations call.
-function RecommendationsCard({ recs }: { recs?: Array<Record<string, any>> }) {
-  const list = (recs ?? []).slice(-4).reverse();
+function RecommendationsCard({ recs, onOpenElla }: { recs?: Array<Record<string, any>>, onOpenElla?: (seed?: string) => void }) {
+  // Trend info first, then device faults, then the rest (stable sort keeps
+  // newest-first within each group).
+  const weight = (t?: string) => (t === "trend_down" ? 0 : t === "device_fault" ? 1 : 2);
+  const list = (recs ?? []).slice(-4).sort((a, b) => weight(a.type) - weight(b.type));
   const levelColor = { critical: C.low, warning: C.high, info: C.ink };
   const levelTint = { critical: C.lowTint, warning: C.highTint, info: C.infoTint };
   return (
@@ -718,11 +721,19 @@ function RecommendationsCard({ recs }: { recs?: Array<Record<string, any>> }) {
               : null}
           </View>
         ))}
+      {list.length > 0 && onOpenElla && (
+        <Pressable
+          onPress={() => onOpenElla(
+            `I got this alert: "${(list[list.length - 1]?.type || "").replace(/_/g, " ").toUpperCase()} — ${mmolText(list[list.length - 1]?.message)}". What should I do?`)}
+          style={{ alignSelf: "flex-end", marginTop: 2, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: C.accent }}>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>Ask Ella →</Text>
+        </Pressable>
+      )}
     </Card>
   );
 }
 
-function Dashboard() {
+function Dashboard({ onOpenElla }: { onOpenElla?: (seed?: string) => void }) {
   const [state] = usePoll(`/state/${PATIENT}`, POLL_MS);
   const [readings] = usePoll(`/readings/${PATIENT}`, 15000);
   const [range, setRange] = useState("6h");
@@ -744,7 +755,7 @@ function Dashboard() {
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={{ padding: 14, gap: 12 }}>
-      <RecommendationsCard recs={state?.recommendations} />
+      <RecommendationsCard recs={state?.recommendations} onOpenElla={onOpenElla} />
       <Card>
         <Text style={{ fontSize: 40, fontWeight: "800", color: glucoseTone(g), letterSpacing: -0.8 }}>
           {g == null ? "– –" : `${mmol1(g)}  ${trendArrow(delta)}`}
@@ -798,7 +809,7 @@ const CHAT_GREETING = [{ role: "assistant", content: "Hi! I'm Ella. How are you 
 function loadChatHistory() {
   try {
     if (typeof localStorage !== "undefined") {
-      const saved = JSON.parse(localStorage.getItem("ella-chat") || "null");
+      const saved = JSON.parse(localStorage.getItem("ella-chat-v3") || "null");
       if (Array.isArray(saved) && saved.length) return saved;
     }
   } catch { /* corrupted storage — fall back to greeting */ }
@@ -807,17 +818,78 @@ function loadChatHistory() {
 
 function saveChatHistory(msgs) {
   try {
-    if (typeof localStorage !== "undefined") localStorage.setItem("ella-chat", JSON.stringify(msgs.slice(-50)));
+    if (typeof localStorage !== "undefined") localStorage.setItem("ella-chat-v3", JSON.stringify(msgs.slice(-50)));
   } catch { /* storage unavailable — in-memory only */ }
 }
 
-function Chat({ msgs, setMsgs }) {
+// ----------------------------------------------------- chat markdown (no deps)
+// Renders Ella's replies: **bold**, *italic*, `code`, ### headings, bullet /
+// numbered lists, and paragraphs.
+const MD_SPLIT = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*`]+?\*)/g;
+
+function mdInline(text: string): Array<string | JSX.Element> {
+  return String(text).split(MD_SPLIT).filter(Boolean).map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**")) return <Text key={i} style={{ fontWeight: "700" }}>{p.slice(2, -2)}</Text>;
+    if (p.startsWith("`") && p.endsWith("`")) return <Text key={i} style={{ fontFamily: "Menlo, monospace", fontSize: 12 }}>{p.slice(1, -1)}</Text>;
+    if (p.startsWith("*") && p.endsWith("*") && p.length > 2) return <Text key={i} style={{ fontStyle: "italic" }}>{p.slice(1, -1)}</Text>;
+    return p;
+  });
+}
+
+function MarkdownText({ content }: { content: string }) {
+  const out: JSX.Element[] = [];
+  const list: Array<{ n?: number, text: string }> = [];
+  const flushList = (key: string) => {
+    if (!list.length) return;
+    out.push(
+      <View key={key} style={{ gap: 3 }}>
+        {list.map((li, i) => (
+          <Text key={i} style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            <Text style={{ color: C.muted }}>{li.n ? `${li.n}. ` : "•  "}</Text>{mdInline(li.text)}
+          </Text>
+        ))}
+      </View>,
+    );
+    list.length = 0;
+  };
+  String(content).split("\n").forEach((raw, idx) => {
+    const line = raw.trimEnd();
+    const bullet = line.match(/^\s*[-*]\s+(.*)/);
+    const numbered = line.match(/^\s*(\d+)[.)]\s+(.*)/);
+    const heading = line.match(/^\s*(#{1,4})\s+(.*)/);
+    if (bullet) list.push({ text: bullet[1] });
+    else if (numbered) list.push({ n: Number(numbered[1]), text: numbered[2] });
+    else {
+      flushList(`l${out.length}`);
+      if (heading) {
+        out.push(<Text key={idx} style={{ fontWeight: "800", fontSize: 13, marginTop: 2 }}>{mdInline(heading[2])}</Text>);
+      } else if (!line.trim()) {
+        out.push(<View key={idx}style={{ height: 4 }} />);
+      } else {
+        out.push(<Text key={idx}>{mdInline(line)}</Text>);
+      }
+    }
+  });
+  flushList(`l${out.length}`);
+  return <View style={{ gap: 5 }}>{out}</View>;
+}
+
+function Chat({ msgs, setMsgs, autoSend }: { msgs: any[], setMsgs: any, autoSend?: { text: string, n: number } | null }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const lastSentSeed = useRef<number | null>(null);
+  // Bumped on delete so an in-flight reply cannot repopulate a cleared chat.
+  const sendGen = useRef(0);
+  // After delete, ignore server history until a poll comes back empty.
+  const skipServerHistory = useRef(false);
   // Pick up proactive messages Ella pushed server-side (low-glucose watch)
   const [state] = usePoll(`/state/${PATIENT}`, 15000);
   useEffect(() => {
     const h = state?.chat_history;
+    if (skipServerHistory.current) {
+      if (!h || h.length === 0) skipServerHistory.current = false;
+      return;
+    }
     if (h && h.length) {
       setMsgs((x) => (x.length === 1 && x[0].content.startsWith("Hi! I'm Ella"))
         ? [x[0], ...h.slice(-19)]
@@ -825,9 +897,37 @@ function Chat({ msgs, setMsgs }) {
     }
   }, [state?.chat_history]);
 
-  const send = useCallback(async () => {
-    const m = text.trim();
+  const deleteChat = useCallback(async () => {
+    sendGen.current += 1;
+    skipServerHistory.current = true;
+    setText("");
+    setBusy(false);
+    setMsgs(CHAT_GREETING.map((m) => ({ ...m })));
+    try {
+      await fetch(`${API}/chat/${PATIENT}`, { method: "DELETE" });
+    } catch { /* local transcript is already cleared */ }
+  }, [setMsgs]);
+
+  const confirmDeleteChat = () => {
+    // Alert.alert is a no-op on react-native-web — use window.confirm there.
+    if (typeof window !== "undefined" && typeof window.confirm === "function") {
+      if (window.confirm("Delete chat? This removes the conversation with Ella.")) void deleteChat();
+      return;
+    }
+    Alert.alert(
+      "Delete chat?",
+      "This removes the conversation with Ella.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => { void deleteChat(); } },
+      ],
+    );
+  };
+
+  const send = useCallback(async (override?: string) => {
+    const m = (override ?? text).trim();
     if (!m || busy) return;
+    const gen = sendGen.current;
     setText("");
     setMsgs((x) => [...x, { role: "user", content: m }]);
     setBusy(true);
@@ -838,15 +938,35 @@ function Chat({ msgs, setMsgs }) {
         body: JSON.stringify({ message: m }),
       });
       const j = await r.json();
+      if (sendGen.current !== gen) return;
       setMsgs((x) => [...x, { role: "assistant", content: mmolText(j.reply || j.error) || "?" }]);
     } catch (e) {
+      if (sendGen.current !== gen) return;
       setMsgs((x) => [...x, { role: "assistant", content: "Connection problem — is the backend running?" }]);
     }
-    setBusy(false);
+    if (sendGen.current === gen) setBusy(false);
   }, [text, busy]);
+
+  // Auto-send seeded questions from "Ask Ella" (fires once per seed).
+  useEffect(() => {
+    if (autoSend && autoSend.n !== lastSentSeed.current && !busy) {
+      lastSentSeed.current = autoSend.n;
+      send(autoSend.text);
+    }
+  }, [autoSend, busy, send]);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <View style={s.chatToolbar}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete chat"
+          onPress={confirmDeleteChat}
+          hitSlop={8}
+        >
+          <Text style={s.deleteChat}>Delete chat</Text>
+        </Pressable>
+      </View>
       <FlatList
         style={{ padding: 12 }}
         data={msgs}
@@ -858,7 +978,9 @@ function Chat({ msgs, setMsgs }) {
                 📣 ELLA REACHED OUT{item.level ? ` · ${item.level.toUpperCase()}` : ""}
               </Text>
             ) : null}
-            <Text style={item.role === "user" ? { color: "#fff" } : {}}>{item.content}</Text>
+            <Text style={item.role === "user" ? { color: "#fff" } : {}}>
+              {item.role === "user" ? item.content : <MarkdownText content={item.content} />}
+            </Text>
           </View>
         )}
       />
@@ -870,9 +992,9 @@ function Chat({ msgs, setMsgs }) {
           style={s.input} value={text} onChangeText={setText}
           placeholder="Tell Ella about meals, sleep, exercise, stress…"
           placeholderTextColor={C.faint}
-          onSubmitEditing={send}
+          onSubmitEditing={() => send()}
         />
-        <Pressable style={[s.btn, { backgroundColor: C.accent }]} onPress={send} disabled={busy}>
+        <Pressable style={[s.btn, { backgroundColor: C.accent }]} onPress={() => send()} disabled={busy}>
           {busy ? <ActivityIndicator color={C.white} /> : <Text style={s.btnText}>Send</Text>}
         </Pressable>
       </View>
@@ -953,6 +1075,12 @@ export default function App() {
   const [tab, setTab] = useState(0);
   const [chatMsgs, setChatMsgs] = useState(loadChatHistory());
   useEffect(() => { saveChatHistory(chatMsgs); }, [chatMsgs]);
+  // "Ask Ella" flow: seed message the Chat tab auto-sends on open.
+  const [pendingSeed, setPendingSeed] = useState<{ text: string, n: number } | null>(null);
+  const openElla = useCallback((seed?: string) => {
+    setTab(1);
+    if (seed) setPendingSeed({ text: seed, n: (pendingSeed?.n ?? 0) + 1 });
+  }, [pendingSeed]);
   const Comp = TABS[tab].Comp as React.ComponentType<any>;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.page }}>
@@ -962,8 +1090,8 @@ export default function App() {
       </View>
       <View style={{ flex: 1 }}>
         {tab === 1
-          ? <Chat msgs={chatMsgs} setMsgs={setChatMsgs} />
-          : <Comp />}
+          ? <Chat msgs={chatMsgs} setMsgs={setChatMsgs} autoSend={pendingSeed} />
+          : <Comp onOpenElla={openElla} />}
       </View>
       <View style={s.tabbar}>
         {TABS.map((t, i) => (
@@ -998,6 +1126,13 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: C.line
   },
   bubbleUser: { alignSelf: "flex-end", backgroundColor: C.accent, borderColor: C.accent },
+  bubbleElla: { alignSelf: "flex-start", backgroundColor: C.surface, borderColor: C.line },
+  chatToolbar: {
+    flexDirection: "row", justifyContent: "flex-end", alignItems: "center",
+    paddingHorizontal: 16, paddingVertical: 8, backgroundColor: C.white,
+    borderBottomWidth: 1, borderBottomColor: C.line,
+  },
+  deleteChat: { color: C.low, fontWeight: "700", fontSize: 13 },
   input: {
     flex: 1, backgroundColor: C.white, borderRadius: 999, paddingHorizontal: 16,
     paddingVertical: 10, borderWidth: 1, borderColor: C.line, color: C.ink

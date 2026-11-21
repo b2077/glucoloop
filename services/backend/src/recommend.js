@@ -17,7 +17,33 @@ export function generateRecommendations(store, patientId, forecast) {
   const pumpStatus = latest.pump?.pump_status || "ok";
   const recs = [];
 
-  // Device fault → always recommend alarm_only, never dose
+  const target = profile.target_mgdl ?? 100;
+  const isf = profile.isf_mgdl_per_u ?? 50;
+  const icRatio = profile.ic_ratio_g_per_u ?? 10;
+  const basal = profile.basal_u_hr ?? 1.1;
+
+  // Use forecast if available
+  const shortPt = forecast?.short?.point;
+  const actionClass = forecast?.action?.class;
+  const actionProb = forecast?.action?.probs?.[actionClass] ?? 0;
+
+  // Trending down toward range boundary — generated FIRST so it is listed
+  // before any device-fault warning.
+  if (forecast?.medium && forecast.medium.length >= 2 && g != null) {
+    const m0 = forecast.medium[0].point, mLast = forecast.medium[forecast.medium.length - 1].point;
+    if (mLast < m0 - 10 && g < 110 && g >= 72) {
+      recs.push({
+        type: "trend_down",
+        level: "info",
+        message: `Glucose trending down (${Math.round(m0)} → ${Math.round(mLast)} mg/dL over 1 h). ` +
+                 `Consider a small snack (~${Math.round(icRatio * 0.5)}g) if trend continues.`,
+        suggested_action: actionClass || "no_op",
+      });
+    }
+  }
+
+  // Device fault → always recommend alarm_only, never dose (short-circuits:
+  // only the trend info above is kept alongside it)
   if (quality === "drift" || quality === "dropout" || (pumpStatus !== "ok" && pumpStatus !== "suspended")) {
     recs.push({
       type: "device_fault",
@@ -29,16 +55,6 @@ export function generateRecommendations(store, patientId, forecast) {
   }
 
   if (g === null) return recs;
-
-  const target = profile.target_mgdl ?? 100;
-  const isf = profile.isf_mgdl_per_u ?? 50;
-  const icRatio = profile.ic_ratio_g_per_u ?? 10;
-  const basal = profile.basal_u_hr ?? 1.1;
-
-  // Use forecast if available
-  const shortPt = forecast?.short?.point;
-  const actionClass = forecast?.action?.class;
-  const actionProb = forecast?.action?.probs?.[actionClass] ?? 0;
 
   // Low glucose or predicted low → recommend fast carbs
   if (g < 72 || (shortPt !== undefined && shortPt < 72)) {
@@ -69,20 +85,6 @@ export function generateRecommendations(store, patientId, forecast) {
       predicted_mgdl: shortPt ? Math.round(shortPt) : null,
       correction_units: correctionUnits,
     });
-  }
-
-  // Trending down toward range boundary
-  if (forecast?.medium && forecast.medium.length >= 2) {
-    const m0 = forecast.medium[0].point, mLast = forecast.medium[forecast.medium.length - 1].point;
-    if (mLast < m0 - 10 && g < 110 && g >= 72) {
-      recs.push({
-        type: "trend_down",
-        level: "info",
-        message: `Glucose trending down (${Math.round(m0)} → ${Math.round(mLast)} mg/dL over 1 h). ` +
-                 `Consider a small snack (~${Math.round(icRatio * 0.5)}g) if trend continues.`,
-        suggested_action: actionClass || "no_op",
-      });
-    }
   }
 
   // Pump action from ML policy with confidence

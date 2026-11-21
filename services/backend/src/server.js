@@ -22,7 +22,7 @@ try {
   }
 } catch { /* .env is optional */ }
 import { Store } from "./state.js";
-import { runAgent } from "./agent/mistral.js";
+import { runAgent, forgetConversation } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
 import { runRecommendationPass } from "./recommend.js";
 import { runProactiveChatPass } from "./agent/proactive.js";
@@ -50,7 +50,7 @@ function recordRequest(method, path, status, ms) {
 // ---- helpers ------------------------------------------------------------------
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -216,6 +216,13 @@ const server = http.createServer(async (req, res) => {
         done(500);
         return json(res, 500, { error: `agent failed: ${exc.message}` });
       }
+    }
+    if (req.method === "DELETE" && c) {
+      const patientId = decodeURIComponent(c[1]);
+      conversations.delete(patientId);
+      forgetConversation(patientId);
+      done(200);
+      return json(res, 200, { status: "cleared", patient_id: patientId });
     }
 
     // -- readings: full 24h glucose history (FE issue #5.1) --

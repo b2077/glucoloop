@@ -108,6 +108,11 @@ export function resetAgentState() {
   conversations.clear();
 }
 
+/** Drop the hosted conversation for one patient so the next message starts fresh. */
+export function forgetConversation(patientId) {
+  conversations.delete(patientId);
+}
+
 function conversationBase(toolDefs) {
   if (process.env.MISTRAL_AGENT_ID) return { agent_id: process.env.MISTRAL_AGENT_ID };
   return { model: MODEL, tools: toolDefs };
