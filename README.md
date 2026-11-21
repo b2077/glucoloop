@@ -39,6 +39,16 @@ cd services/simulator && python generate_dataset.py --n-train 24 --n-eval 6 --da
 cd services/ml && python train.py          # rewrites artifacts/ and docs/METRICS.md
 ```
 
+## Proactive low-glucose watch (Ella reaches out first)
+
+A background pass in the backend (`PROACTIVE_CHAT_INTERVAL_S`, default 30 s) detects
+low or fast-dropping glucose **and** a predicted horizon minimum below threshold
+(cached ML forecast), then initiates a chat turn through the agent with a
+`[SYSTEM EVENT …]` message — so the warning is composed by Ella in mock and real
+(Mistral) mode alike. If the patient doesn't reply within the response window, the
+no-response protocol escalates (critical alert). Thresholds live in
+`services/scenario/config.low_watch.json` (env-overridable via `PROACTIVE_*`).
+
 ## The ML (what the models do)
 
 | Model | Output | Technique |
@@ -61,6 +71,7 @@ trajectory and the recommended action.
 | Path | Owner (per the hackathon plan) | What to validate today |
 |---|---|---|
 | `services/simulator/` | Eng 1 | physiology plausibility, fault injection, data generation |
+| `services/scenario/` | scenario branch | scripted "predicted low" crash (`drive_low.py`) + watcher that fires an LLM-initiated warning and a no-response protocol (`low_watch.py`, see its README) |
 | `services/ml/` | Eng 3 | retrain reproducibility, metrics, predict API responses |
 | `services/backend/` | Eng 2 | REST contract, fusion window building, agent tool flow |
 | `apps/mobile/` | Eng 4 | runs under Expo, polling, approve/dismiss cards |

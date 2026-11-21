@@ -66,6 +66,11 @@ export interface Alert {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  /** Proactive (Ella-initiated) messages carry these; user [SYSTEM EVENT] triggers are marked systemEvent. */
+  proactive?: boolean;
+  level?: "info" | "warning" | "critical";
+  at?: string;
+  systemEvent?: boolean;
 }
 
 /** Patient profile (IC ratio, ISF, basal, target) — FE issue #5.3. */
@@ -123,6 +128,9 @@ export interface ReadingPoint {
  *  GET  /state/:patientId           -> { latest, history, checkin, alerts, forecast, active_faults, latest_iob, tir_1h, tir_24h, profile, readings_count, chat_history: ChatMessage[] }
  *  GET  /forecast/:patientId        -> Forecast
  *  POST /chat/:patientId            body: { message } -> { reply, toolCalls }
+ *                                 (messages starting with "[SYSTEM EVENT" are backend-initiated proactive
+ *                                  triggers — the proactive low-glucose watch posts these; the agent answers them
+ *                                  like a patient message and they appear in chat_history)
  *  GET  /readings/:patientId        -> { patient_id, count, readings: [{ t, glucose_mgdl, glucose_mmol, cgm_quality, hr, activity, iob, pump_status }] }   (full 24 h)
  *  GET  /tir/:patientId?range=1h|24h|all -> { tir_pct, in_range, total, low_pct, high_pct, range: { low_mmol: 4, high_mmol: 10 } }  (TIR = 4–10 mmol/L)
  *  GET  /profile/:patientId         -> { patient_id, profile }   (IC ratio, ISF, basal, target)

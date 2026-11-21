@@ -91,7 +91,10 @@ GET /state/:patientId
   "tir_24h": { /* TIRResult, see #6 */ },
   "chat_history": [              // last 20 messages (for rendering chat on load/reload)
     { "role": "user", "content": "I ate 60g of carbs" },
-    { "role": "assistant", "content": "Got it — about 60 g of carbs logged..." }
+    { "role": "assistant", "content": "Got it — about 60 g of carbs logged..." },
+    // Proactive Ella-initiated messages (low-glucose watch) look like:
+    { "role": "user", "content": "[SYSTEM EVENT — predicted hypoglycemia] ...", "systemEvent": true },
+    { "role": "assistant", "content": "⚠️ Heads-up — ...", "proactive": true, "level": "warning", "at": "2026-11-21T16:00:00Z" }
   ]
 }
 ```
@@ -143,6 +146,9 @@ Content-Type: application/json
 ```json
 // Request:
 { "message": "I ate 60g of carbs and did a 30min run" }
+// Proactive triggers: the backend's low-glucose watch (agent/proactive.js) also POSTs
+// here with message = "[SYSTEM EVENT — ...]" — handle it exactly like a user message;
+// the reply lands in chat_history with proactive: true.
 
 // Response 200:
 {

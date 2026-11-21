@@ -193,6 +193,43 @@ export async function mockAgent(tools, msg) {
   const m = msg.toLowerCase();
   const call = async (n, a) => tools.execute(n, a, tools.deps);
 
+  // Proactive backend triggers (services/scenario/low_watch.py POSTs these so the
+  // agent initiates the conversation): "[SYSTEM EVENT — predicted hypoglycemia] ..."
+  // starts the patient-informing warning; "[SYSTEM EVENT — no response ...]" starts
+  // the no-response escalation protocol. Same tools as a normal turn.
+  if (m.startsWith("[system event")) {
+    const f = await call("predict", {});
+    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
+    const horizon = f.medium || [];
+    const minP = horizon.length ? Math.min(...horizon.map((p) => p.point)) : f.short.point;
+    const minAt = horizon.find((p) => p.point === minP) || { minutes: 5 };
+    const noResponse = m.includes("no response");
+    const level = noResponse ? "critical" : "warning";
+    await call("send_alert", {
+      level,
+      message: noResponse
+        ? `No patient response within the response window after the predicted-low warning ` +
+          `(min ${minP} mg/dL at t+${minAt.minutes} min). Escalation protocol started.`
+        : `Predicted glucose trending down: min ${minP} mg/dL at t+${minAt.minutes} min, ` +
+          `below the critical threshold of 70 mg/dL.`,
+      suggested_action: f.action.class,
+    });
+    return {
+      reply: noResponse
+        ? `I haven't heard back from you within the response window, so I'm starting the ` +
+          `escalation protocol now: predicted low of ${minP} mg/dL at t+${minAt.minutes} min ` +
+          `(critical threshold 70 mg/dL), pump recommendation **${f.action.class}**. I've ` +
+          `raised a ${level} alert on your dashboard. If you feel shaky or sweaty right now, ` +
+          `treat the low with fast carbs immediately. This is guidance, not medical advice.`
+        : `⚠️ Heads-up — flagging this before it happens: your predicted glucose is trending ` +
+          `down, about ${minP} mg/dL at t+${minAt.minutes} min (5-min forecast ${f.short.point}), ` +
+          `below the critical threshold of 70 mg/dL. Pump recommendation: **${f.action.class}**. ` +
+          `Please reply within the response window to acknowledge — otherwise I'll start the ` +
+          `escalation protocol. This is guidance, not medical advice.`,
+      toolCalls: ["predict", "send_alert"],
+    };
+  }
+
   if (/(ate|eat|meal|lunch|dinner|breakfast|carbs?)/.test(m)) {
     const g = num(msg) ?? 60;
     await call("log_checkin", { carbs_g: g });
@@ -247,6 +284,50 @@ export async function mockAgent(tools, msg) {
       `factored it in. Current 1-hour forecast: ${f.medium[f.medium.length - 1].point} mg/dL. ` +
       `How much did you eat in the last few hours?`,
       toolCalls: ["log_checkin", "predict"] };
+  }
+  // Status update in response to a proactive low-glucose heads-up
+  // Status-update keywords as whole words not glued to other letters/hyphens, so
+  // e.g. "low-carb lunch" does not misfire. The "[system event" branch above runs first.
+  if (/(?<![\w-])(fine|ok|okay|good|shaky|sweaty|dizzy|hypo|treated|juice|snack|low|dropping|falling|dropped)(?![\w-])/.test(m)) {
+    const f = await call("predict", {});
+    const isSymptomatic = /(shaky|sweaty|dizzy|hypo)/.test(m);
+    const treated = /(treated|juice|snack|ate)/.test(m);
+
+    if (isSymptomatic && !treated) {
+      await call("send_alert", {
+        level: "critical",
+        message: `Patient reports hypo symptoms (shaky/sweaty/dizzy) at low glucose. ` +
+                 `Recommend immediate fast carbs (~15g) and monitor.`,
+        suggested_action: "no_op",
+      });
+      const outlook = f && !f.error
+        ? ` Forecast: ${f.short.point} mg/dL in 5 min, ${f.medium[f.medium.length - 1].point} in 1 h.`
+        : "";
+      return { reply:
+        `I'm glad you told me — shaky/sweaty/dizzy means your body needs sugar **now**. ` +
+        `Have ~15g of fast carbs (juice, glucose tabs) and stay somewhere safe.${outlook} ` +
+        `I've flagged this on your dashboard. Let me know once you've treated it.`,
+        toolCalls: ["predict", "send_alert"] };
+    }
+    if (treated) {
+      await call("log_checkin", { carbs_g: 15 });
+      const outlook = f && !f.error
+        ? ` Forecast: ${f.short.point} mg/dL in 5 min, trending to ${f.medium[f.medium.length - 1].point} in 1 h.`
+        : "";
+      return { reply:
+        `Good — I've logged ~15g of fast carbs.${outlook} Keep an eye on your CGM over the next ` +
+        `30 min. If you still feel off or the numbers keep dropping, have another 15g and tell me. ` +
+        `Anything else on your mind?`,
+        toolCalls: ["log_checkin", "predict"] };
+    }
+    // Just "fine" / "ok" — acknowledge and keep monitoring
+    const outlook = f && !f.error
+      ? ` Right now: ${f.short.point} mg/dL in 5 min, ${f.medium[f.medium.length - 1].point} in 1 h.`
+      : "";
+    return { reply:
+      `Good to hear.${outlook} I'll keep watching your numbers — if the trend continues down ` +
+      `I'll check in again. Anything you want to log (food, insulin, activity)?`,
+      toolCalls: ["predict"] };
   }
   if (/(sugar|glucose|reading|forecast|predict|level|how am i|status|feel|shaky)/.test(m)) {
     const f = await call("predict", {});

@@ -1,0 +1,36 @@
+{
+  "backend_url": "http://localhost:8100",
+  "patient_id": "demo-001",
+
+  "threshold_mgdl": 70.0,
+  "horizon_min": 60,
+  "confirm_polls": 2,
+  "poll_interval_s": 5.0,
+
+  "response_window_min": 30.0,
+  "response_window_mode": "sim",
+  "hysteresis_mgdl": 5.0,
+
+  "protocol": [
+    {
+      "step": "agent_escalation",
+      "enabled": true,
+      "description": "LLM agent starts the no-response protocol conversation with the patient (watcher POSTs a [SYSTEM EVENT] to /chat/:patient; Ella warns again and asks what is going on)."
+    },
+    {
+      "step": "critical_alert",
+      "enabled": true,
+      "description": "Agent raises a critical alert on the patient's dashboard via the send_alert tool during the protocol conversation."
+    },
+    {
+      "step": "emergency_contact",
+      "enabled": false,
+      "description": "TODO define later: notify a configured emergency contact (SMS/call) after the protocol starts."
+    },
+    {
+      "step": "suspend_pump",
+      "enabled": false,
+      "description": "TODO define later: recommend pump suspend. GlucoLoop only recommends — the patient approves; no autonomous actuation."
+    }
+  ]
+}

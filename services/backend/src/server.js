@@ -25,6 +25,7 @@ import { Store } from "./state.js";
 import { runAgent } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
 import { runRecommendationPass } from "./recommend.js";
+import { runProactiveChatPass } from "./agent/proactive.js";
 import { buildAgentContext } from "./agent/context.js";
 
 const PORT = Number(process.env.PORT || 8100);
@@ -311,6 +312,31 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       }
     }, RECO_INTERVAL_S * 1000);
     timer.unref(); // don't keep process alive just for this
+  }
+
+  // Background proactive chat engine — Ella initiates when glucose drops.
+  // Runs every PROACTIVE_CHAT_INTERVAL_S (default 30s).
+  // Consolidated (PR #11 + PR #12): detection covers current level / drop rate AND
+  // the cached ML forecast minimum; the warning is composed by the agent via a
+  // [SYSTEM EVENT] message, so it works in mock and real Mistral mode. If the
+  // patient doesn't reply within the response window, the no-response protocol
+  // escalates (critical alert).
+  const PROACTIVE_CHAT_INTERVAL_S = Number(process.env.PROACTIVE_CHAT_INTERVAL_S || 30);
+  if (PROACTIVE_CHAT_INTERVAL_S > 0) {
+    const chatTimer = setInterval(async () => {
+      try {
+        const initiate = async (pid, eventMsg) => {
+          const history = conversations.get(pid) || [];
+          const { reply } = await runAgent({ store, mlUrl: ML_URL, patientId: pid }, history, eventMsg);
+          return reply;
+        };
+        const n = await runProactiveChatPass(store, conversations, { initiate });
+        if (n > 0) console.log(`[proactive-chat] Ella reached out to ${n} patient(s)`);
+      } catch (e) {
+        console.error(`[proactive-chat] pass failed: ${e.message}`);
+      }
+    }, PROACTIVE_CHAT_INTERVAL_S * 1000);
+    chatTimer.unref();
   }
 }
 
