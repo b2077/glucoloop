@@ -1,36 +1,11 @@
 {
   "train_1": {
     "seed": 1,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 2163,
-        "end_min": 2337,
-        "intensity": 1.253030207702178
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 2630,
-        "end_min": 2775,
-        "intensity": 1.092941018104284
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 3207,
-        "end_min": 3276,
-        "intensity": 1.3398815210314088
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 3447,
-        "end_min": 3578,
-        "intensity": 0.5623495791498756
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 2,
+    "days": 2,
+    "faults": [],
+    "meals": 6,
+    "exercises": 2,
+    "stresses": 1,
     "sleeps": [
       {
         "start_min": 1403,
@@ -41,45 +16,15 @@
         "start_min": 2794,
         "end_min": 3242,
         "quality": 0.9903685999006193
-      },
-      {
-        "start_min": 4280,
-        "end_min": 4743,
-        "quality": 0.9586488523954513
       }
     ]
   },
   "train_2": {
     "seed": 2,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 1560,
-        "end_min": 1753,
-        "intensity": 0.7162233910190144
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 1933,
-        "end_min": 2072,
-        "intensity": 1.1925181318299733
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 2029,
-        "end_min": 2241,
-        "intensity": 0.938186166159125
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 3518,
-        "end_min": 3614,
-        "intensity": 1.3293561258065814
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
+    "days": 2,
+    "faults": [],
+    "meals": 6,
+    "exercises": 2,
     "stresses": 2,
     "sleeps": [
       {
@@ -91,40 +36,16 @@
         "start_min": 2847,
         "end_min": 3330,
         "quality": 0.6590733003076872
-      },
-      {
-        "start_min": 4287,
-        "end_min": 4754,
-        "quality": 0.7032711988377682
       }
     ]
   },
   "train_3": {
     "seed": 3,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 1156,
-        "end_min": 1360,
-        "intensity": 0.928572904298462
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 1395,
-        "end_min": 1579,
-        "intensity": 0.7187154245688046
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 3297,
-        "end_min": 3453,
-        "intensity": 1.1827989078603502
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 2,
+    "days": 2,
+    "faults": [],
+    "meals": 6,
+    "exercises": 2,
+    "stresses": 1,
     "sleeps": [
       {
         "start_min": 1381,
@@ -135,40 +56,35 @@
         "start_min": 2794,
         "end_min": 3219,
         "quality": 0.6569930010171684
-      },
-      {
-        "start_min": 4290,
-        "end_min": 4704,
-        "quality": 0.8150450998926715
       }
     ]
   },
   "train_4": {
     "seed": 4,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
-        "kind": "cgm_dropout",
-        "start_min": 1128,
-        "end_min": 1279,
-        "intensity": 1.2706304830917436
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 1308,
-        "end_min": 1487,
-        "intensity": 0.9917252846124766
-      },
-      {
         "kind": "pump_leakage",
-        "start_min": 2122,
-        "end_min": 2253,
-        "intensity": 0.9760389104754019
+        "start_min": 796,
+        "end_min": 925,
+        "intensity": 0.6333957554516931
+      },
+      {
+        "kind": "cgm_dropout",
+        "start_min": 1124,
+        "end_min": 1297,
+        "intensity": 0.8499373998222548
+      },
+      {
+        "kind": "pump_occlusion",
+        "start_min": 1405,
+        "end_min": 1544,
+        "intensity": 1.0002261893487459
       }
     ],
-    "meals": 9,
-    "exercises": 2,
-    "stresses": 1,
+    "meals": 6,
+    "exercises": 1,
+    "stresses": 0,
     "sleeps": [
       {
         "start_min": 1402,
@@ -179,40 +95,29 @@
         "start_min": 2814,
         "end_min": 3225,
         "quality": 0.8044258084222737
-      },
-      {
-        "start_min": 4240,
-        "end_min": 4706,
-        "quality": 0.9695535267120043
       }
     ]
   },
   "train_5": {
     "seed": 5,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
         "kind": "cgm_drift",
-        "start_min": 887,
-        "end_min": 959,
-        "intensity": 0.9485441007603762
+        "start_min": 2187,
+        "end_min": 2268,
+        "intensity": 1.3954482394141259
       },
       {
-        "kind": "pump_occlusion",
-        "start_min": 960,
-        "end_min": 1159,
-        "intensity": 0.7355164573061714
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 1404,
-        "end_min": 1554,
-        "intensity": 0.8164520874044902
+        "kind": "cgm_drift",
+        "start_min": 2216,
+        "end_min": 2376,
+        "intensity": 0.5185172176702108
       }
     ],
-    "meals": 9,
+    "meals": 6,
     "exercises": 2,
-    "stresses": 2,
+    "stresses": 1,
     "sleeps": [
       {
         "start_min": 1362,
@@ -223,21 +128,29 @@
         "start_min": 2848,
         "end_min": 3343,
         "quality": 0.5321072186560956
-      },
-      {
-        "start_min": 4230,
-        "end_min": 4680,
-        "quality": 0.7183335260878263
       }
     ]
   },
   "train_6": {
     "seed": 6,
-    "days": 3,
-    "faults": [],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 2,
+    "days": 2,
+    "faults": [
+      {
+        "kind": "cgm_drift",
+        "start_min": 813,
+        "end_min": 863,
+        "intensity": 0.9396577575122896
+      },
+      {
+        "kind": "cgm_drift",
+        "start_min": 1493,
+        "end_min": 1530,
+        "intensity": 1.3661860785148758
+      }
+    ],
+    "meals": 6,
+    "exercises": 2,
+    "stresses": 1,
     "sleeps": [
       {
         "start_min": 1393,
@@ -248,39 +161,40 @@
         "start_min": 2840,
         "end_min": 3252,
         "quality": 0.7486339563707368
-      },
-      {
-        "start_min": 4287,
-        "end_min": 4731,
-        "quality": 0.7696235562526024
       }
     ]
   },
   "train_7": {
     "seed": 7,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
-        "kind": "pump_occlusion",
-        "start_min": 906,
-        "end_min": 1052,
-        "intensity": 1.3803321539808286
+        "kind": "cgm_drift",
+        "start_min": 452,
+        "end_min": 548,
+        "intensity": 1.0148888202713704
       },
       {
-        "kind": "cgm_drift",
-        "start_min": 2091,
-        "end_min": 2121,
-        "intensity": 1.3300477298017457
+        "kind": "pump_occlusion",
+        "start_min": 1156,
+        "end_min": 1245,
+        "intensity": 0.5117940255425059
       },
       {
         "kind": "pump_leakage",
-        "start_min": 2809,
-        "end_min": 2971,
-        "intensity": 0.8695363106022067
+        "start_min": 1681,
+        "end_min": 1777,
+        "intensity": 0.9968734353935043
+      },
+      {
+        "kind": "cgm_drift",
+        "start_min": 2397,
+        "end_min": 2496,
+        "intensity": 1.4171677731928523
       }
     ],
-    "meals": 9,
-    "exercises": 2,
+    "meals": 6,
+    "exercises": 1,
     "stresses": 1,
     "sleeps": [
       {
@@ -292,46 +206,29 @@
         "start_min": 2812,
         "end_min": 3227,
         "quality": 0.5801060169289223
-      },
-      {
-        "start_min": 4247,
-        "end_min": 4666,
-        "quality": 0.505897012771253
       }
     ]
   },
   "train_8": {
     "seed": 8,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
         "kind": "cgm_dropout",
-        "start_min": 2137,
-        "end_min": 2192,
-        "intensity": 0.8110309498232615
+        "start_min": 741,
+        "end_min": 836,
+        "intensity": 0.8933107100863242
       },
       {
-        "kind": "pump_occlusion",
-        "start_min": 2534,
-        "end_min": 2747,
-        "intensity": 0.5518356525166741
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 3721,
-        "end_min": 3784,
-        "intensity": 0.8750217556982995
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 3744,
-        "end_min": 3789,
-        "intensity": 1.4887735986731543
+        "kind": "cgm_dropout",
+        "start_min": 1950,
+        "end_min": 2072,
+        "intensity": 0.9522665288271464
       }
     ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 2,
+    "meals": 6,
+    "exercises": 2,
+    "stresses": 1,
     "sleeps": [
       {
         "start_min": 1412,
@@ -342,32 +239,33 @@
         "start_min": 2824,
         "end_min": 3258,
         "quality": 0.6423103187554062
-      },
-      {
-        "start_min": 4251,
-        "end_min": 4652,
-        "quality": 0.682919957333898
       }
     ]
   },
   "train_9": {
     "seed": 9,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
+        "kind": "pump_leakage",
+        "start_min": 2191,
+        "end_min": 2357,
+        "intensity": 1.2082069141031724
+      },
+      {
         "kind": "pump_occlusion",
-        "start_min": 2505,
-        "end_min": 2662,
-        "intensity": 1.2928578804972282
+        "start_min": 2388,
+        "end_min": 2483,
+        "intensity": 1.2825909153281314
       },
       {
         "kind": "pump_leakage",
-        "start_min": 3612,
-        "end_min": 3655,
-        "intensity": 0.8701315451400075
+        "start_min": 2434,
+        "end_min": 2495,
+        "intensity": 1.3828625669966756
       }
     ],
-    "meals": 9,
+    "meals": 6,
     "exercises": 0,
     "stresses": 0,
     "sleeps": [
@@ -380,33 +278,34 @@
         "start_min": 2843,
         "end_min": 3270,
         "quality": 0.8526668522947269
-      },
-      {
-        "start_min": 4294,
-        "end_min": 4793,
-        "quality": 0.8541034570515862
       }
     ]
   },
   "train_10": {
     "seed": 10,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
-        "kind": "cgm_drift",
-        "start_min": 437,
-        "end_min": 524,
-        "intensity": 1.1490790566244355
+        "kind": "pump_occlusion",
+        "start_min": 1785,
+        "end_min": 1887,
+        "intensity": 0.7497755193962832
       },
       {
-        "kind": "pump_leakage",
-        "start_min": 3324,
-        "end_min": 3363,
-        "intensity": 0.8395155752344187
+        "kind": "cgm_drift",
+        "start_min": 2018,
+        "end_min": 2178,
+        "intensity": 1.100367820435919
+      },
+      {
+        "kind": "cgm_dropout",
+        "start_min": 2117,
+        "end_min": 2237,
+        "intensity": 0.8337644567193383
       }
     ],
-    "meals": 9,
-    "exercises": 3,
+    "meals": 6,
+    "exercises": 2,
     "stresses": 2,
     "sleeps": [
       {
@@ -418,45 +317,15 @@
         "start_min": 2809,
         "end_min": 3315,
         "quality": 0.7589171068084348
-      },
-      {
-        "start_min": 4246,
-        "end_min": 4667,
-        "quality": 0.5747074502904941
       }
     ]
   },
   "train_11": {
     "seed": 11,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "cgm_drift",
-        "start_min": 654,
-        "end_min": 829,
-        "intensity": 0.9299486920478354
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 1075,
-        "end_min": 1189,
-        "intensity": 0.7171482574185282
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 1212,
-        "end_min": 1264,
-        "intensity": 1.1733623572759107
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 2524,
-        "end_min": 2558,
-        "intensity": 0.7007689541612193
-      }
-    ],
-    "meals": 9,
-    "exercises": 1,
+    "days": 2,
+    "faults": [],
+    "meals": 6,
+    "exercises": 0,
     "stresses": 1,
     "sleeps": [
       {
@@ -468,45 +337,40 @@
         "start_min": 2819,
         "end_min": 3307,
         "quality": 0.7745376344350132
-      },
-      {
-        "start_min": 4287,
-        "end_min": 4692,
-        "quality": 0.7335366033691355
       }
     ]
   },
   "train_12": {
     "seed": 12,
-    "days": 3,
+    "days": 2,
     "faults": [
       {
-        "kind": "pump_leakage",
-        "start_min": 431,
-        "end_min": 498,
-        "intensity": 0.6350878625092655
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 1506,
-        "end_min": 1630,
-        "intensity": 1.2803828012931047
+        "kind": "pump_occlusion",
+        "start_min": 1853,
+        "end_min": 1933,
+        "intensity": 0.6343517372983926
       },
       {
         "kind": "pump_leakage",
-        "start_min": 1573,
-        "end_min": 1693,
-        "intensity": 0.9190070480114682
+        "start_min": 2025,
+        "end_min": 2177,
+        "intensity": 1.2788400920220722
       },
       {
-        "kind": "cgm_drift",
-        "start_min": 2663,
-        "end_min": 2830,
-        "intensity": 1.228871381861207
+        "kind": "pump_occlusion",
+        "start_min": 2141,
+        "end_min": 2262,
+        "intensity": 0.7193899345083382
+      },
+      {
+        "kind": "pump_leakage",
+        "start_min": 2327,
+        "end_min": 2406,
+        "intensity": 1.3715558455252963
       }
     ],
-    "meals": 9,
-    "exercises": 3,
+    "meals": 6,
+    "exercises": 2,
     "stresses": 1,
     "sleeps": [
       {
@@ -518,508 +382,6 @@
         "start_min": 2834,
         "end_min": 3334,
         "quality": 0.9401249999617368
-      },
-      {
-        "start_min": 4233,
-        "end_min": 4647,
-        "quality": 0.5671758686491963
-      }
-    ]
-  },
-  "train_13": {
-    "seed": 13,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 595,
-        "end_min": 645,
-        "intensity": 1.2392297121947433
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 915,
-        "end_min": 1043,
-        "intensity": 0.9557829600792653
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 1495,
-        "end_min": 1537,
-        "intensity": 1.458468319412647
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 2917,
-        "end_min": 3138,
-        "intensity": 1.0477017956423662
-      }
-    ],
-    "meals": 9,
-    "exercises": 1,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1355,
-        "end_min": 1745,
-        "quality": 0.9552035890329189
-      },
-      {
-        "start_min": 2845,
-        "end_min": 3332,
-        "quality": 0.748933704166256
-      },
-      {
-        "start_min": 4274,
-        "end_min": 4678,
-        "quality": 0.6115507474969601
-      }
-    ]
-  },
-  "train_14": {
-    "seed": 14,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "cgm_drift",
-        "start_min": 739,
-        "end_min": 868,
-        "intensity": 0.7808176015436111
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 1011,
-        "end_min": 1171,
-        "intensity": 1.3188733824372005
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 1959,
-        "end_min": 2098,
-        "intensity": 0.6913319680119784
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 3031,
-        "end_min": 3180,
-        "intensity": 1.323890111667126
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1399,
-        "end_min": 1857,
-        "quality": 0.8731611800456558
-      },
-      {
-        "start_min": 2806,
-        "end_min": 3262,
-        "quality": 0.7107323700563148
-      },
-      {
-        "start_min": 4282,
-        "end_min": 4763,
-        "quality": 0.9614041879443795
-      }
-    ]
-  },
-  "train_15": {
-    "seed": 15,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "cgm_drift",
-        "start_min": 1281,
-        "end_min": 1313,
-        "intensity": 0.5397636971126589
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 2686,
-        "end_min": 2767,
-        "intensity": 0.968249681887064
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1396,
-        "end_min": 1903,
-        "quality": 0.8907330138860153
-      },
-      {
-        "start_min": 2805,
-        "end_min": 3234,
-        "quality": 0.954310590544346
-      },
-      {
-        "start_min": 4281,
-        "end_min": 4700,
-        "quality": 0.6790602187145514
-      }
-    ]
-  },
-  "train_16": {
-    "seed": 16,
-    "days": 3,
-    "faults": [],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1352,
-        "end_min": 1825,
-        "quality": 0.5775001274328333
-      },
-      {
-        "start_min": 2851,
-        "end_min": 3308,
-        "quality": 0.7036826475997189
-      },
-      {
-        "start_min": 4265,
-        "end_min": 4751,
-        "quality": 0.5744657274924556
-      }
-    ]
-  },
-  "train_17": {
-    "seed": 17,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "cgm_dropout",
-        "start_min": 1136,
-        "end_min": 1237,
-        "intensity": 1.1532888148767353
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 2181,
-        "end_min": 2333,
-        "intensity": 1.1299181968345016
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 2279,
-        "end_min": 2503,
-        "intensity": 1.4087380258134665
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1377,
-        "end_min": 1768,
-        "quality": 0.6270204568963196
-      },
-      {
-        "start_min": 2827,
-        "end_min": 3285,
-        "quality": 0.7259546119185758
-      },
-      {
-        "start_min": 4280,
-        "end_min": 4698,
-        "quality": 0.8293486525255904
-      }
-    ]
-  },
-  "train_18": {
-    "seed": 18,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_leakage",
-        "start_min": 420,
-        "end_min": 581,
-        "intensity": 0.8947450036018292
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 857,
-        "end_min": 996,
-        "intensity": 0.6256812243893821
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 3368,
-        "end_min": 3508,
-        "intensity": 0.670897997484897
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1391,
-        "end_min": 1795,
-        "quality": 0.6567980606116091
-      },
-      {
-        "start_min": 2833,
-        "end_min": 3238,
-        "quality": 0.8130830555082214
-      },
-      {
-        "start_min": 4266,
-        "end_min": 4760,
-        "quality": 0.6649416861973629
-      }
-    ]
-  },
-  "train_19": {
-    "seed": 19,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_leakage",
-        "start_min": 565,
-        "end_min": 722,
-        "intensity": 0.9305199559917133
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 817,
-        "end_min": 962,
-        "intensity": 0.9990311255160551
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 2,
-    "sleeps": [
-      {
-        "start_min": 1362,
-        "end_min": 1804,
-        "quality": 0.7048463012077342
-      },
-      {
-        "start_min": 2839,
-        "end_min": 3284,
-        "quality": 0.8885766190448526
-      },
-      {
-        "start_min": 4237,
-        "end_min": 4689,
-        "quality": 0.8394474731920147
-      }
-    ]
-  },
-  "train_20": {
-    "seed": 20,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 2701,
-        "end_min": 2895,
-        "intensity": 0.6752362957256003
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 3001,
-        "end_min": 3090,
-        "intensity": 1.036002443559902
-      }
-    ],
-    "meals": 9,
-    "exercises": 2,
-    "stresses": 2,
-    "sleeps": [
-      {
-        "start_min": 1356,
-        "end_min": 1799,
-        "quality": 0.8200884042948811
-      },
-      {
-        "start_min": 2832,
-        "end_min": 3278,
-        "quality": 0.8088447299400248
-      },
-      {
-        "start_min": 4254,
-        "end_min": 4675,
-        "quality": 0.8081048154622845
-      }
-    ]
-  },
-  "train_21": {
-    "seed": 21,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_leakage",
-        "start_min": 960,
-        "end_min": 1061,
-        "intensity": 0.776136030743514
-      },
-      {
-        "kind": "cgm_dropout",
-        "start_min": 2071,
-        "end_min": 2158,
-        "intensity": 0.7029909668354104
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 2922,
-        "end_min": 2998,
-        "intensity": 1.0522077399493792
-      }
-    ],
-    "meals": 9,
-    "exercises": 1,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1395,
-        "end_min": 1866,
-        "quality": 0.5985963679724728
-      },
-      {
-        "start_min": 2815,
-        "end_min": 3257,
-        "quality": 0.8280436758722018
-      },
-      {
-        "start_min": 4271,
-        "end_min": 4683,
-        "quality": 0.8923277739803783
-      }
-    ]
-  },
-  "train_22": {
-    "seed": 22,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "cgm_dropout",
-        "start_min": 668,
-        "end_min": 715,
-        "intensity": 1.0512646099109748
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 748,
-        "end_min": 838,
-        "intensity": 1.3583934274602854
-      },
-      {
-        "kind": "pump_occlusion",
-        "start_min": 1801,
-        "end_min": 1986,
-        "intensity": 0.9195659756232073
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 2520,
-        "end_min": 2648,
-        "intensity": 0.5263778899513731
-      }
-    ],
-    "meals": 9,
-    "exercises": 1,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1379,
-        "end_min": 1869,
-        "quality": 0.5257193837376297
-      },
-      {
-        "start_min": 2828,
-        "end_min": 3264,
-        "quality": 0.5936679294565745
-      },
-      {
-        "start_min": 4273,
-        "end_min": 4730,
-        "quality": 0.7953994511483815
-      }
-    ]
-  },
-  "train_23": {
-    "seed": 23,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 926,
-        "end_min": 1077,
-        "intensity": 1.2453534018221997
-      },
-      {
-        "kind": "pump_leakage",
-        "start_min": 3350,
-        "end_min": 3454,
-        "intensity": 0.7333608495921111
-      }
-    ],
-    "meals": 9,
-    "exercises": 1,
-    "stresses": 2,
-    "sleeps": [
-      {
-        "start_min": 1357,
-        "end_min": 1803,
-        "quality": 0.7076109653203557
-      },
-      {
-        "start_min": 2792,
-        "end_min": 3184,
-        "quality": 0.827128574866062
-      },
-      {
-        "start_min": 4279,
-        "end_min": 4770,
-        "quality": 0.9703014584470182
-      }
-    ]
-  },
-  "train_24": {
-    "seed": 24,
-    "days": 3,
-    "faults": [
-      {
-        "kind": "pump_occlusion",
-        "start_min": 1027,
-        "end_min": 1075,
-        "intensity": 0.6457340603322007
-      },
-      {
-        "kind": "cgm_drift",
-        "start_min": 2035,
-        "end_min": 2188,
-        "intensity": 0.6917084140555539
-      }
-    ],
-    "meals": 9,
-    "exercises": 3,
-    "stresses": 1,
-    "sleeps": [
-      {
-        "start_min": 1406,
-        "end_min": 1894,
-        "quality": 0.8560800350135828
-      },
-      {
-        "start_min": 2793,
-        "end_min": 3268,
-        "quality": 0.6857185416019804
-      },
-      {
-        "start_min": 4262,
-        "end_min": 4757,
-        "quality": 0.6618273506607937
       }
     ]
   }

@@ -1,4 +1,4 @@
-"""Train the GlucoLoop models:
+"""Train the GlucoLoop models (parallel):
   1. point forecasters    : glucose at t+5/15/30/45/60 min
   2. long-range envelope  : per 4 h block of next 24 h, q10 of block min &
                             q90 of block max (quantile regression)
@@ -6,11 +6,13 @@
                             (expert saw the true future; the model sees only
                             features available in real time)
 
-Saves joblib artifacts to artifacts/ and writes ../../docs/METRICS.md.
+All 18 models are fit in parallel (ProcessPoolExecutor). Saves joblib
+artifacts to artifacts/ and writes ../../docs/METRICS.md.
 """
 from __future__ import annotations
 
 import json
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import joblib
@@ -29,13 +31,33 @@ POINT_HORIZONS = {"t5": "f_g_t5", "t15": "f_g_t15", "t30": "f_g_t30",
                   "t45": "f_g_t45", "t60": "f_g_t60"}
 
 
-def fit_point(name, X, y_raw, Xe, ye_raw):
+def _fit_point_job(name, X, y_raw, Xe, ye_raw):
     m_tr, m_ev = ~np.isnan(y_raw), ~np.isnan(ye_raw)
-    m = HistGradientBoostingRegressor(max_iter=250, learning_rate=0.08, random_state=0)
+    m = HistGradientBoostingRegressor(max_iter=80, learning_rate=0.08, random_state=0)
     m.fit(X[m_tr], y_raw[m_tr])
     mae = float(np.mean(np.abs(m.predict(Xe[m_ev]) - ye_raw[m_ev])))
-    print(f"  point {name}: eval MAE = {mae:.1f} mg/dL")
-    return m, mae
+    return ("point", name, m, {"mae": round(mae, 1), "n_iter": int(m.n_iter_)})
+
+
+def _fit_block_job(b, stat, q, X, y, Xe, ye):
+    mask = ~np.isnan(y)
+    if mask.sum() < 50:
+        return ("block", f"{b}_{stat}", None, None)
+    m = HistGradientBoostingRegressor(max_iter=60, learning_rate=0.08,
+                                      loss="quantile", quantile=q, random_state=0)
+    m.fit(X[mask], y[mask])
+    me = ~np.isnan(ye)
+    mae = float(np.mean(np.abs(m.predict(Xe[me]) - ye[me])))
+    return ("block", f"{b}_{stat}", m, {"mae": round(mae, 1), "n_iter": int(m.n_iter_)})
+
+
+def _fit_clf_job(X, y, Xe, ye):
+    clf = HistGradientBoostingClassifier(max_iter=80, learning_rate=0.08, random_state=0)
+    clf.fit(X, y)
+    pred = clf.predict(Xe)
+    acc = float((pred == ye).mean())
+    cm = pd.crosstab(ye, pred, rownames=["true"], colnames=["pred"])
+    return ("clf", "action", clf, {"accuracy": round(acc, 3), "n_iter": int(clf.n_iter_), "cm": str(cm)})
 
 
 def main():
@@ -45,44 +67,43 @@ def main():
     print(f"train rows {len(tr)} | eval rows {len(ev)}")
 
     X, Xe = tr[FEATURES].values.astype(float), ev[FEATURES].values.astype(float)
-    metrics = {"point": {}, "long": {}, "action": {}}
-
-    print("== point forecasters ==")
+    jobs = []
     for name, col in POINT_HORIZONS.items():
-        m, mae = fit_point(name, X, tr[col].values.astype(float),
-                           Xe, ev[col].values.astype(float))
-        joblib.dump(m, ART / f"point_{name}.joblib")
-        metrics["point"][name] = round(mae, 1)
-
-    print("== long-range envelope ==")
+        jobs.append(("point", (name, X, tr[col].values.astype(float),
+                               Xe, ev[col].values.astype(float))))
     for b in range(6):
         for stat, q in (("min", 0.1), ("max", 0.9)):
-            tgt = f"b{b}_{stat}"
-            mask = tr[tgt].notna()
-            if mask.sum() < 50:
-                continue
-            m = HistGradientBoostingRegressor(max_iter=200, learning_rate=0.08,
-                                              loss="quantile", quantile=q, random_state=0)
-            m.fit(X[mask.values], tr.loc[mask, tgt].values.astype(float))
-            joblib.dump(m, ART / f"block_{b}_{stat}.joblib")
-            masse = ev[tgt].notna()
-            pred = m.predict(Xe[masse.values])
-            mae = float(np.mean(np.abs(pred - ev.loc[masse, tgt].values.astype(float))))
-            metrics["long"][f"block{b}_{stat}"] = round(mae, 1)
-            print(f"  block {b} {stat} (q{q}): eval MAE {mae:.1f}")
+            jobs.append(("block", (b, stat, q, X, tr[f"b{b}_{stat}"].values.astype(float),
+                                   Xe, ev[f"b{b}_{stat}"].values.astype(float))))
+    jobs.append(("clf", (X, tr["action_label"].values, Xe, ev["action_label"].values)))
 
-    print("== pump action policy ==")
-    clf = HistGradientBoostingClassifier(max_iter=250, learning_rate=0.08, random_state=0)
-    clf.fit(X, tr["action_label"].values)
-    pred = clf.predict(Xe)
-    acc = float((pred == ev["action_label"].values).mean())
-    metrics["action"]["accuracy"] = round(acc, 3)
-    cm = pd.crosstab(ev["action_label"].values, pred, rownames=["true"], colnames=["pred"])
-    print(f"  eval accuracy {acc:.1%}\n{cm}")
-    joblib.dump(clf, ART / "action_policy.joblib")
+    metrics = {"point": {}, "long": {}, "action": {}}
+    print(f"fitting {len(jobs)} models in parallel...")
+    with ProcessPoolExecutor(max_workers=8) as ex:
+        futs = []
+        for kind, args in jobs:
+            fn = {"point": _fit_point_job, "block": _fit_block_job, "clf": _fit_clf_job}[kind]
+            futs.append(ex.submit(fn, *args))
+        for f in futs:
+            kind, key, model, info = f.result()
+            if kind == "point":
+                joblib.dump(model, ART / f"point_{key}.joblib")
+                metrics["point"][key] = info["mae"]
+                print(f"  point {key}: MAE {info['mae']} mg/dL (n_iter {info['n_iter']}/80)")
+            elif kind == "block":
+                if model is None:
+                    continue
+                joblib.dump(model, ART / f"block_{key}.joblib")
+                metrics["long"][f"block{key}"] = info["mae"]
+                print(f"  block {key}: MAE {info['mae']} (n_iter {info['n_iter']}/60)")
+            else:
+                joblib.dump(model, ART / "action_policy.joblib")
+                metrics["action"]["accuracy"] = info["accuracy"]
+                print(f"  action policy: acc {info['accuracy']:.1%} (n_iter {info['n_iter']}/80)")
+                print(info["cm"])
 
     (ART / "meta.json").write_text(json.dumps({
-        "action_classes": list(clf.classes_),
+        "action_classes": ACTION_CLASSES,
         "point_horizons": list(POINT_HORIZONS), "blocks": 6, "metrics": metrics,
     }, indent=2))
 
@@ -93,7 +114,7 @@ def main():
     for k, v in metrics["point"].items():
         lines.append(f"| {k} | {v} |")
     lines += ["", "## Pump action policy (5-class)", "",
-              f"- Eval accuracy: **{acc:.1%}**", "", "```", str(cm), "```", "",
+              f"- Eval accuracy: **{metrics['action']['accuracy']:.1%}**", "",
               "## Long-range envelope (24 h, q10 of block min / q90 of block max)",
               "", "```", json.dumps(metrics["long"], indent=1), "```"]
     (DOCS / "METRICS.md").write_text("\n".join(lines) + "\n")
