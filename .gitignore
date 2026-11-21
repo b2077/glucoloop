@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+data/generated/
+data/tune/
+services/ml/artifacts/
+!services/ml/artifacts/.gitkeep
+*.log
+.expo/
