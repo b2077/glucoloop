@@ -1,17 +1,25 @@
 /** Mistral agent layer: conversational check-in + evidence-based advice.
  *
- * Real mode  : MISTRAL_API_KEY set -> api.mistral.ai chat completions with
- *              function calling (tools: predict, log_checkin, send_alert).
- *              Includes retry on transient failures (5xx / network) and
- *              validates tool-call arguments before executing.
- * Mock mode  : no key -> deterministic scripted agent that CALLS THE SAME TOOL
- *              IMPLEMENTATIONS, so the demo works without a key.
+ * Agents API mode : MISTRAL_API_KEY set -> hosted agent on La Plateforme
+ *                   (POST /v1/agents once, then POST /v1/conversations per
+ *                   patient). Tool calls come back as function.call entries;
+ *                   we execute them locally (tools.js) and append
+ *                   function.call_result entries until the agent replies.
+ *                   Conversation history lives server-side per patient.
+ *                   Set MISTRAL_AGENT_ID to reuse an existing agent.
+ * Mock mode       : no key -> deterministic scripted agent that CALLS THE SAME
+ *                   TOOL IMPLEMENTATIONS, so the demo works without a key.
+ *
+ * Both modes return { reply, toolCalls } — the /chat/:patient contract is
+ * unchanged, so apps/mobile needs no changes.
  */
 import { makeToolSet } from "./tools.js";
+
 import { SYSTEM_PROMPT } from "./prompt.js";
 
 const MODEL = process.env.MISTRAL_MODEL || "mistral-large-latest";
-const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
+const API = "https://api.mistral.ai/v1";
+
 const MAX_ROUNDS = 3;
 const MAX_RETRIES = 1;
 
@@ -37,6 +45,19 @@ async function fetchWithRetry(url, opts, retries = MAX_RETRIES) {
     }
   }
   throw lastErr;
+}
+
+async function mistral(path, body) {
+  const res = await fetchWithRetry(`${API}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`mistral api ${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
 /** Validate tool call arguments against expected shape. Returns error string or null. */
@@ -66,51 +87,100 @@ function validateToolArgs(name, args) {
   }
 }
 
+/** Extract plain text from a conversation output entry (string or chunk array). */
+export function extractText(entry) {
+  if (!entry) return "";
+  const c = entry.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) return c.filter((p) => p && p.type === "text").map((p) => p.text).join("");
+  return "";
+}
+
+// ---- hosted agent + per-patient conversations (Agents API mode) ------------
+
+let agentIdPromise = null;
+const conversations = new Map(); // patientId -> conversation_id
+
+/** Reset cached agent/conversation state (tests). */
+export function resetAgentState() {
+  agentIdPromise = null;
+  conversations.clear();
+}
+
+async function getAgentId(toolDefs) {
+  if (process.env.MISTRAL_AGENT_ID) return process.env.MISTRAL_AGENT_ID;
+  if (!agentIdPromise) {
+    agentIdPromise = mistral("/agents", {
+      name: "glucoloop-ella",
+      description: "GlucoLoop conversational assistant (Ella): check-ins + evidence-based pump guidance.",
+      model: MODEL,
+      instructions: SYSTEM_PROMPT,
+      tools: toolDefs,
+      temperature: 0.4,
+    }).then((a) => a.id);
+  }
+  return agentIdPromise;
+}
+
+async function agentsApiRun(deps, tools, userMessage) {
+  const agentId = await getAgentId(tools.defs);
+  const patientId = deps.patientId;
+  const toolCalls = [];
+
+  let convId = conversations.get(patientId);
+  let resp;
+  if (convId) {
+    resp = await mistral(`/conversations/${convId}/messages`, {
+      inputs: [{ object: "entry", type: "message.input", role: "user", content: userMessage }],
+    });
+  } else {
+    resp = await mistral("/conversations", {
+      agent_id: agentId,
+      stream: false,
+      inputs: [{ object: "entry", type: "message.input", role: "user", content: userMessage }],
+    });
+    convId = resp.conversation_id;
+    conversations.set(patientId, convId);
+  }
+
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const calls = (resp.outputs || []).filter((o) => o.type === "function.call");
+    if (calls.length === 0) {
+      const lastMsg = [...(resp.outputs || [])].reverse().find((o) => o.type === "message.output");
+      return { reply: extractText(lastMsg), toolCalls };
+    }
+    const results = [];
+    for (const call of calls) {
+      toolCalls.push(call.name);
+      let args = {};
+      try {
+        args = typeof call.arguments === "string" ? JSON.parse(call.arguments || "{}") : call.arguments;
+      } catch {
+        args = {};
+      }
+      const argErr = validateToolArgs(call.name, args);
+      const out = argErr ? { error: argErr } : await tools.execute(call.name, args, deps);
+      results.push({
+        object: "entry",
+        type: "function.call_result",
+        tool_call_id: call.tool_call_id,
+        name: call.name,
+        result: JSON.stringify(out),
+      });
+    }
+    resp = await mistral(`/conversations/${convId}/messages`, { inputs: results });
+  }
+  return { reply: "Let me check your latest data again in a moment.", toolCalls };
+}
+
 export async function runAgent(deps, history, userMessage) {
   const tools = makeToolSet(deps);
-  const messages = [
-    { role: "system", content: SYSTEM_PROMPT },
-    ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: userMessage },
-  ];
-
   if (!process.env.MISTRAL_API_KEY) {
     return mockAgent(tools, userMessage);
   }
-
-  const toolCalls = [];
-  for (let round = 0; round < MAX_ROUNDS; round++) {
-    const res = await fetchWithRetry(MISTRAL_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-      },
-      body: JSON.stringify({ model: MODEL, messages, tools: tools.defs,
-                             tool_choice: "auto", temperature: 0.4 }),
-    });
-    if (!res.ok) throw new Error(`mistral api ${res.status}: ${await res.text()}`);
-    const choice = (await res.json()).choices[0].message;
-    if (choice.tool_calls && choice.tool_calls.length > 0) {
-      messages.push(choice);
-      for (const tc of choice.tool_calls) {
-        const args = JSON.parse(tc.function.arguments || "{}");
-        const argErr = validateToolArgs(tc.function.name, args);
-        if (argErr) {
-          toolCalls.push(tc.function.name);
-          messages.push({ role: "tool", tool_call_id: tc.id,
-                          content: JSON.stringify({ error: argErr }) });
-          continue;
-        }
-        const out = await tools.execute(tc.function.name, args, deps);
-        toolCalls.push(tc.function.name);
-        messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(out) });
-      }
-      continue;
-    }
-    return { reply: choice.content, toolCalls };
-  }
-  return { reply: "Let me check your latest data again in a moment.", toolCalls };
+  // Agents API mode: history is stored server-side per conversation; the
+  // passed-in history is only used by mock mode.
+  return agentsApiRun(deps, tools, String(userMessage));
 }
 
 // ---- mock agent: keyword FSM over the same tools (demo fallback) -----------
