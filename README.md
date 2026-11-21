@@ -152,6 +152,36 @@ finishes. The verified run on 24 training and six evaluation scenarios used
 without any usable sensor reading are excluded during training and rejected
 when predicting, rather than filled from future observations.
 
+## Questions and situations for the demo
+
+These are presentation questions, not guaranteed Ella chat commands. The trained
+forecaster uses recent device readings and recorded context. Its training and
+evaluation are simulated; these examples do not establish patient accuracy.
+
+| Example question | What can answer it now | Limit to explain |
+|---|---|---|
+| “Where is glucose heading in the next 30 minutes?” | Trained point forecasts at 5, 15, 30, 45 and 60 minutes. | Requires readings; not a clinical guarantee. |
+| “Which parts of the next day might be high or low?” | Six four-hour envelope blocks. | Estimated bounds, not validated probabilities or a precise five-hour forecast. |
+| “I ate 60 g of carbohydrate. Does that change the forecast?” | A recorded check-in can change model inputs and the next prediction. | Effects are learned from the simulator, not real patients. |
+| “What might a meal, exercise or stress response look like?” | The separate `/demo` chart has meal, moderate exercise, intense exercise and stress examples. | Sizes and timing are invented assumptions; intense exercise can increase glucose. |
+| “What if this person responds more strongly than our starting estimate?” | Add completed simulated observations in `/demo` to adapt that event's curve. | Temporary browser demonstration; it does not personalise the eighteen trained models. |
+| “How would a poor night's sleep, a period or menopause affect me?” | Sleep is an existing simulated-model input; cycle and menopause inputs are absent. | No measured personal response is established for any of these. |
+| “How much insulin should I take, or should I carry a spare?” | Neither is answered by the new demonstration. | Treatment is unvalidated; spare planning lacks stock and inventory inputs. |
+
+For a standalone presentation, run this from the repository root with Node 22:
+
+```bash
+NODE_ENV=test RECO_INTERVAL_S=0 PORT=18130 node services/backend/src/server.js
+```
+
+Open `http://localhost:18130/demo`. No trained models or credentials are needed.
+Choose **Moderate exercise** and add four simulated observations: the initial
+-20 mg/dL peak change adapts to -25, toward a simulated personal change of -30.
+These are absolute changes, not percentages or literature averages. Each event
+learns separately; reset or reload clears the corresponding history. The page
+never changes insulin delivery. See `docs/DEMO_SCRIPT.md` for the walkthrough
+and `docs/OPENHUMANS_TOOLS.md` for sources and data-access limits.
+
 ## Configuration and tests
 
 Settings live in `services/ml/config.toml` rather than in the code. The file
@@ -175,7 +205,7 @@ in-memory patient history, and stops its own services. Results are saved to
 
 Hormonal, menstrual and menopausal context is longer-term research; those inputs
 are not represented in the current models. No real OpenAPS records have been
-acquired and a new personalization demonstration has not been implemented.
+acquired. The separate simulation personalisation page is described above.
 The proposed five-hour spare-vial/pen
 planning feature is separate and has not been implemented. It needs
 remaining-stock and spare-inventory inputs that current messages do not carry.

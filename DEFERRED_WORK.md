@@ -1,10 +1,5 @@
 # Open work
 
-- 2026-11-21: Source: request for a simple adaptive demonstration. Add a clearly
-  labelled simulation-first forecast-personalisation layer using population
-  predictions and gradually weighted individual errors. Keep insulin delivery
-  and treatment recommendations unchanged. Status: outline pending agreement;
-  no universal exercise/stress percentages or real-patient averages established.
 - 2026-11-21: Source: user clarification of the intended action feature.
   Design a five-hour spare-vial/pen planning feature using remaining insulin,
   consumption estimates and available spares. Replace user-facing treatment
@@ -16,8 +11,10 @@
 - 2026-11-21: Source: chosen OpenAPS Data Commons and Open Humans tools.
   Obtain approved research access, then add a small glucose-summary adapter
   with explicit units, thresholds and missing-gap handling. Status: public
-  tools cloned and synthetic arithmetic checked; no patient data obtained and
-  no adapter integrated. See `docs/OPENHUMANS_TOOLS.md`.
+  tools cloned and synthetic arithmetic checked. The separate simulation demo
+  now calculates reading percentages, but no patient data has been obtained
+  and no real-record parsing or gap handling is integrated. See
+  `docs/OPENHUMANS_TOOLS.md`.
 - 2026-11-21: Source: leakage review of simulator labels. Envelope blocks use
   the current sample through 235 minutes rather than strictly future 5–240
   minute windows; action labels similarly end at 55 minutes and shorten near

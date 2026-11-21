@@ -24,6 +24,7 @@ try {
 import { Store } from "./state.js";
 import { runAgent } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
+import { DEMO_HTML } from "./demo.js";
 import { runRecommendationPass } from "./recommend.js";
 import { buildAgentContext } from "./agent/context.js";
 
@@ -115,6 +116,22 @@ const server = http.createServer(async (req, res) => {
         agent_mode: process.env.MISTRAL_API_KEY ? "mistral" : "mock",
         ml_url: ML_URL,
       });
+    }
+
+    // The demonstration serves fixed local assets and cannot mutate patient state.
+    if (req.method === "GET" && path.startsWith("/demo")) {
+      const assets = {
+        "/demo": ["text/html", () => DEMO_HTML],
+        "/demo/model.js": ["text/javascript", () => fs.readFileSync(new URL("./demo-model.js", import.meta.url))],
+        "/demo/config.json": ["application/json", () => fs.readFileSync(new URL("./demo-config.json", import.meta.url))],
+      };
+      if (assets[path]) {
+        const [type, load] = assets[path];
+        const content = load();
+        done(200);
+        res.writeHead(200, { "Content-Type": `${type}; charset=utf-8` });
+        return res.end(content);
+      }
     }
 
     // -- dashboard (static HTML) --

@@ -1,42 +1,52 @@
-# Demo script (6 minutes, fault-tolerant)
+# Simulation personalisation demonstration
 
-All commands from repo root. Start ML, backend, stream (`accel 60`), app.
+This page shows how an initial glucose-response assumption can gradually adapt
+when completed observations differ from it. It runs without trained models,
+patient records, credentials or paid APIs. Numerical responses are invented
+examples, informed only qualitatively by the sources in `OPENHUMANS_TOOLS.md`.
 
-## Beat 1 — Normal day, three horizons (1.5 min)
-Open the Dashboard. Show the glucose bar chart, the 1-hour forecast, and the
-24-hour envelope on the Insights tab. Say: "It sees the next 5 minutes, the
-next hour, and your whole day — with honest uncertainty bands."
+## Start and open
 
-## Beat 2 — Chat check-in feeds the models (1.5 min)
-Ella tab. Type:
-1. "I just ran 5k, about 30 minutes" → exercise logged. Watch the 1-hour
-   forecast and the recommended action shift (Insights tab refresh).
-2. "Slept about 6 hours, pretty stressed today - maybe a 4" → sleep + stress
-   logged; overnight risk envelope tightens/widens accordingly.
-Say: "Every answer she logs becomes a feature in the same feature vector the
-models use. No sensor can see stress coming — she can."
+From the repository root, with Node 22 available:
 
-## Beat 3 — The ML was right (1 min)
-With the stream running, the Dashboard shows the action card changing when
-glucose starts dropping after exercise (Approve card appears if class is
-reduce_basal/suspend). Approve it. Say: "The 5-minute horizon confirmed the
-1-hour forecast. The policy acted before the dip, not after."
+```bash
+NODE_ENV=test RECO_INTERVAL_S=0 PORT=18130 node services/backend/src/server.js
+```
 
-## Beat 4 — Fault intelligence (1.5 min)
-The streamer injects scripted faults (accel 60 → drift hits ~10 min in:
-- CGM **drift** (t=600 sim-min): readings separate from reality. The policy
-  switches to `alarm_only`: refuse to dose on bad data.
-- Pump **occlusion** (t=1500): insulin delivered collapses while commanded stays
-  flat. Ella cross-validates: ask the chat "i feel shaky, how am i doing?" → she
-  tells you the sensor/pump readings look unreliable.
-Say: "Two failure modes, two different intelligent responses — and she asks the
-patient how they feel, because in a fault the human IS a sensor."
+Open `http://localhost:18130/demo`, or select the demonstration link on
+`http://localhost:18130/dashboard`. Test mode skips environment-file loading;
+the disabled recommendation timer keeps this presentation independent of ML
+and chat services. The page works on desktop and mobile browsers; small screens
+can scroll the chart horizontally. Stop the foreground server with Ctrl+C.
 
-## Backup
-Record the full run once before the pitch (screen record). If Wi-Fi dies, play
-the video. Mock chat mode works with no API key — no network dependency.
+## Walkthrough
 
-## Pitch one-liner
-"GlucoLoop fuses CGM, pump and watch data with what you tell it, predicts
-glucose on three horizons, and lets an agent recommend — never command — what
-the pump should do next, even when the devices lie."
+1. Select **Moderate exercise**. The starting assumption is a peak reduction
+   of 20 mg/dL. This is an illustrative absolute change, not a 20% clinical rule.
+2. Select **Add a simulated observation** four times. The generated personal
+   observations average a reduction of 30 mg/dL. With four observations and
+   a starting weight of four, the estimate becomes a reduction of 25 mg/dL.
+3. Show the dashed initial curve, blue adapted curve and dotted comparison
+   outcome. The latter is a separate simulated episode and never enters the
+   update. Further observations gradually increase the personal influence.
+4. Select **Stress**. Its history starts empty. Switch back to exercise to show
+   that the earlier observations belong only to exercise. **Reset this example**
+   clears the selected event. Reloading clears all histories.
+5. Select **Intense exercise** to show a possible increase rather than assuming
+   every exercise session lowers glucose. Meal and stress scenarios are also
+   available. The displayed range percentages summarise generated readings,
+   not clinical accuracy or the quality of insulin control.
+
+## Explain the limits
+
+No insulin is adjusted. The page does not feed the eighteen trained models,
+update real patient state or learn from OpenAPS records. Its mean and range
+percentages are descriptive summaries, not causal evidence. Real event effects
+are mixed with insulin, meals and other influences; this demo knows the baseline
+because it generated the example. Hormones, menopause and sleep require further
+measurements and are not implemented here.
+
+The existing live simulator → backend → trained-forecast integration is tested
+separately in `VALIDATION.md`. Do not claim that chat stress/sleep entries have
+been clinically calibrated, that envelope bands have verified coverage, or that
+approving a prototype action operates an insulin pump.

@@ -57,7 +57,29 @@ chat check-in and failure paths pass against main's newer backend.
 ## Verification and remaining limits
 
 See `docs/VALIDATION.md` for measured training time, latency and test boundaries.
-The classifier still lacks two action classes, and envelope calibration and
+Evaluation lacks true examples of two action classes, and envelope calibration and
 precise label boundaries remain open in `DEFERRED_WORK.md`. A hypothetical
 policy can pass every structural check while recommending a poor action because
 simulation labels or coverage are inadequate; human review remains necessary.
+
+## 2026-11-21: Separate simulation personalisation from trained forecasts
+
+`/demo` is linked from the backend dashboard. `demo-model.js` owns pure curve,
+weighted-learning and reading-summary calculations; `demo.js` renders them in
+the browser. `server.js` only serves fixed local assets. No demo action calls
+ingestion, prediction, chat or treatment endpoints or writes patient history.
+
+`demo-config.json` owns the numerical assumptions. JSON is used instead of TOML
+because both Node and the browser read it without an additional parser. The
+four event amplitudes and triangular time course are illustrative assumptions,
+not literature averages or Bergman model estimates. Hormones and sleep remain
+unmodelled. A browser reload clears histories; each event has a separate history.
+
+The learning calculation combines the initial amplitude with completed noisy
+synthetic peak observations, weighted by their counts. With initial exercise
+change -20 mg/dL, four observations averaging -30 and prior weight four, the
+estimate becomes -25. This is a demonstration of credibility weighting, not
+evidence of a treatment response. The comparison curve does not enter learning.
+Known baselines isolate effects only because these are generated examples.
+Real observations require separate work on overlapping influences and withheld
+evaluation before using them to estimate personal physiological responses.

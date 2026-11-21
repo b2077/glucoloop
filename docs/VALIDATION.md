@@ -79,3 +79,18 @@ replacement binaries used for these checks are not committed. Run training
 before serving so the models match the causal feature path. No real OpenAPS
 records have been acquired, and a new personalization demonstration has not
 been implemented.
+
+## Separate simulation personalisation page — 2026-11-21
+
+The backend suite now passes 77 tests, including four pure demo calculation
+checks and one HTTP check of the page, module, configuration and dashboard link.
+The synthetic 60/70/100/180/200 mg/dL fixture gives 20/60/20 reading percentages
+and mean 122. Boundary readings and readings above 350 are retained.
+
+A real headless Chrome check loaded `/demo`, added four completed exercise
+observations, verified adaptation from -20 to -25 mg/dL, switched to an empty
+stress history, returned to exercise and reset it. Desktop and mobile screenshots
+were inspected. These checks use only locally generated examples and no paid
+APIs or patient histories. They prove the demonstration executes and controls
+work; they do not validate physiological amplitudes, causal effects or dosing.
+The page is independent of the eighteen trained models. See `DEMO_SCRIPT.md`.
