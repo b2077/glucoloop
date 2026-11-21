@@ -6,3 +6,4 @@ data/generated/
 data/tune/
 *.log
 .expo/
+services/scenario/*.jsonl

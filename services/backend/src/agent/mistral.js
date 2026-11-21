@@ -193,6 +193,43 @@ export async function mockAgent(tools, msg) {
   const m = msg.toLowerCase();
   const call = async (n, a) => tools.execute(n, a, tools.deps);
 
+  // Proactive backend triggers (services/scenario/low_watch.py POSTs these so the
+  // agent initiates the conversation): "[SYSTEM EVENT — predicted hypoglycemia] ..."
+  // starts the patient-informing warning; "[SYSTEM EVENT — no response ...]" starts
+  // the no-response escalation protocol. Same tools as a normal turn.
+  if (m.startsWith("[system event")) {
+    const f = await call("predict", {});
+    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
+    const horizon = f.medium || [];
+    const minP = horizon.length ? Math.min(...horizon.map((p) => p.point)) : f.short.point;
+    const minAt = horizon.find((p) => p.point === minP) || { minutes: 5 };
+    const noResponse = m.includes("no response");
+    const level = noResponse ? "critical" : "warning";
+    await call("send_alert", {
+      level,
+      message: noResponse
+        ? `No patient response within the response window after the predicted-low warning ` +
+          `(min ${minP} mg/dL at t+${minAt.minutes} min). Escalation protocol started.`
+        : `Predicted glucose trending down: min ${minP} mg/dL at t+${minAt.minutes} min, ` +
+          `below the critical threshold of 70 mg/dL.`,
+      suggested_action: f.action.class,
+    });
+    return {
+      reply: noResponse
+        ? `I haven't heard back from you within the response window, so I'm starting the ` +
+          `escalation protocol now: predicted low of ${minP} mg/dL at t+${minAt.minutes} min ` +
+          `(critical threshold 70 mg/dL), pump recommendation **${f.action.class}**. I've ` +
+          `raised a ${level} alert on your dashboard. If you feel shaky or sweaty right now, ` +
+          `treat the low with fast carbs immediately. This is guidance, not medical advice.`
+        : `⚠️ Heads-up — flagging this before it happens: your predicted glucose is trending ` +
+          `down, about ${minP} mg/dL at t+${minAt.minutes} min (5-min forecast ${f.short.point}), ` +
+          `below the critical threshold of 70 mg/dL. Pump recommendation: **${f.action.class}**. ` +
+          `Please reply within the response window to acknowledge — otherwise I'll start the ` +
+          `escalation protocol. This is guidance, not medical advice.`,
+      toolCalls: ["predict", "send_alert"],
+    };
+  }
+
   if (/(ate|eat|meal|lunch|dinner|breakfast|carbs?)/.test(m)) {
     const g = num(msg) ?? 60;
     await call("log_checkin", { carbs_g: g });

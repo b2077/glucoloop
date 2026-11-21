@@ -61,6 +61,7 @@ trajectory and the recommended action.
 | Path | Owner (per the hackathon plan) | What to validate today |
 |---|---|---|
 | `services/simulator/` | Eng 1 | physiology plausibility, fault injection, data generation |
+| `services/scenario/` | scenario branch | scripted "predicted low" crash (`drive_low.py`) + watcher that fires an LLM-initiated warning and a no-response protocol (`low_watch.py`, see its README) |
 | `services/ml/` | Eng 3 | retrain reproducibility, metrics, predict API responses |
 | `services/backend/` | Eng 2 | REST contract, fusion window building, agent tool flow |
 | `apps/mobile/` | Eng 4 | runs under Expo, polling, approve/dismiss cards |
