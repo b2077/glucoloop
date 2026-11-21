@@ -286,7 +286,9 @@ export async function mockAgent(tools, msg) {
       toolCalls: ["log_checkin", "predict"] };
   }
   // Status update in response to a proactive low-glucose heads-up
-  if (/(fine|ok|okay|good|shaky|sweaty|dizzy|hypo|treated|juice|snack|low|dropping|falling|dropped)/.test(m)) {
+  // Status-update keywords as whole words not glued to other letters/hyphens, so
+  // e.g. "low-carb lunch" does not misfire. The "[system event" branch above runs first.
+  if (/(?<![\w-])(fine|ok|okay|good|shaky|sweaty|dizzy|hypo|treated|juice|snack|low|dropping|falling|dropped)(?![\w-])/.test(m)) {
     const f = await call("predict", {});
     const isSymptomatic = /(shaky|sweaty|dizzy|hypo)/.test(m);
     const treated = /(treated|juice|snack|ate)/.test(m);
