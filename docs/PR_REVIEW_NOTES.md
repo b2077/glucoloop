@@ -116,7 +116,7 @@ The merge preserves main's backend server, including its existing UTF-8 byte
 count, environment loader and newer APIs. Both branches' API tests are retained.
 The isolated integration fixture now sets test mode so the environment loader
 cannot activate live API credentials; the periodic recommendation timer is
-disabled for this focused flow. No backend-to-ML contract change was needed.
+disabled for this focused flow, along with main's new proactive-chat timer. No backend-to-ML contract change was needed.
 The README retains the newcomer explanation alongside main's backend references,
 and metrics were regenerated on the merged committed simulated dataset.
 
@@ -127,5 +127,25 @@ disjoint scenarios and 20,318/5,041 usable training/evaluation rows, completing
 in 1.816 seconds. The one-hour forecast error was 3.9 mg/dL, and local prediction
 latency had an 8.32 ms 95th percentile over 100 requests with no failures.
 These are simulation and local-service results, not patient validation. No real
-OpenAPS records have been acquired, no new personalization demonstration is
-implemented, and hormonal context remains longer-term work.
+OpenAPS records have been acquired. The separate `/demo` simulation
+personalisation page is implemented; it does not update the trained forecaster.
+Hormonal context remains longer-term work.
+
+
+## Latest main and colleague handover — 2026-11-21
+
+Merged main at `58eb6c0`, retaining the unified proactive low-glucose watch,
+mobile changes and additional tests. The existing backend/ML interface and
+Unicode byte-length fix remain intact. Both ignore patterns for local model
+artifacts and scenario logs are retained.
+
+A clean isolated checkout passed all 97 backend tests, retrained all eighteen
+models on committed simulated data and passed the real cross-service check.
+The exact `npm run demo --prefix services/backend` command was exercised in
+Chrome, including learning, event separation and reset. The colleague is using
+a Mac: `DEMO_SCRIPT.md` gives Git/Node prerequisites and branch setup. Testing
+here was on Linux with Node 22.23.3, not directly on that Mac. No patient data,
+credentials or locally modified model binaries are needed for the chart.
+
+The user's future 24-hour schedule request remains a documented clarification,
+not an implemented parser or a claim that these forecasts use planned events.

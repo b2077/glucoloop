@@ -126,6 +126,7 @@ def main():
                 "ML_URL": ml,
                 "NODE_ENV": "test",
                 "RECO_INTERVAL_S": "0",
+                "PROACTIVE_CHAT_INTERVAL_S": "0",
             },
         )
         ready(ml_process, ml + "/health")

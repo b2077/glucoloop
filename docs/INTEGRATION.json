@@ -7,7 +7,7 @@
     "ml_unavailable_returns_502"
   ],
   "mock_chat": true,
-  "log_directory": "/tmp/glucoloop-integration-d6izltk0",
+  "log_directory": "/tmp/glucoloop-integration-flo8k3bp",
   "local_services": {
     "backend": "http://127.0.0.1:18110",
     "ml": "http://127.0.0.1:18111"
@@ -16,5 +16,5 @@
   "observed_drift_action": "alarm_only",
   "status": "passed",
   "failure_handling": "dropout and stopped ML return 502",
-  "elapsed_seconds": 1.298
+  "elapsed_seconds": 1.244
 }

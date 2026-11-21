@@ -82,7 +82,7 @@ is now implemented, as described below.
 
 ## Separate simulation personalisation page — 2026-11-21
 
-The backend suite now passes 77 tests, including four pure demo calculation
+The initial demo backend suite passed 77 tests, including four pure demo calculation
 checks and one HTTP check of the page, module, configuration and dashboard link.
 The synthetic 60/70/100/180/200 mg/dL fixture gives 20/60/20 reading percentages
 and mean 122. Boundary readings and readings above 350 are retained.
@@ -94,3 +94,24 @@ were inspected. These checks use only locally generated examples and no paid
 APIs or patient histories. They prove the demonstration executes and controls
 work; they do not validate physiological amplitudes, causal effects or dosing.
 The page is independent of the eighteen trained models. See `DEMO_SCRIPT.md`.
+
+
+## Clean-checkout handover after latest main merge — 2026-11-21
+
+Main `58eb6c0` is integrated. A separate checkout of the merged code passed all
+97 backend tests, including main's proactive-chat tests. All eighteen models
+were retrained from committed simulated data (20,318 training / 5,041 evaluation
+rows), completing in about 1.7 seconds. No local model files or private records
+were copied into this checkout. Newly generated binary artifacts remain local.
+The real simulator/backend/ML integration passed again in 1.244 seconds; its
+latest five checks are recorded in `INTEGRATION.json`. Both background timers
+are disabled in this focused integration; proactive logic has separate unit
+coverage, not a live-model or clinical validation here.
+
+The standalone `npm run demo --prefix services/backend` launch was verified
+from the clean checkout using Node 22.23.3 and a real Chrome browser. Rendering,
+four-observation learning, separate event histories and reset passed. The
+launcher imports the backend in test mode and starts no background alert loops.
+No packages, API keys, patient records or saved models are required for it.
+Instructions target the demonstrator's Mac; actual execution here was Linux,
+so this is not evidence that the specific Mac has been configured or tested.

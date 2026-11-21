@@ -7,8 +7,9 @@ examples, informed only qualitatively by the sources in `OPENHUMANS_TOOLS.md`.
 
 ## Start and open
 
-On your colleague's computer, install Git and Node 22, including npm. In a
-terminal opened in the folder where they keep projects, obtain this PR branch:
+The demonstrator will use a Mac. Install Git and Node 22, including npm. Open
+Terminal using Spotlight (Command-Space, type Terminal, then Return). In the
+folder where they keep projects, obtain this PR branch:
 
 ```bash
 git clone --branch feat/parallel-fast-training https://github.com/b2077/glucoloop.git

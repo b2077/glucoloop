@@ -26,3 +26,8 @@
 - 2026-11-21: Source: simulator review. Heart-rate noise uses an unseeded random
   generator, so a scenario seed does not fully reproduce generated rows.
   Status: open; seed this noise when revisiting dataset generation.
+
+- 2026-11-21: Source: request to include a user's schedule over the next 24 hours.
+  Define the schedule format, whether inputs are planned activities or location,
+  and which forecast output is required. Status: clarification requested; no
+  future schedule parser or schedule-conditioned forecast is implemented.

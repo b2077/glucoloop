@@ -83,3 +83,18 @@ evidence of a treatment response. The comparison curve does not enter learning.
 Known baselines isolate effects only because these are generated examples.
 Real observations require separate work on overlapping influences and withheld
 evaluation before using them to estimate personal physiological responses.
+
+
+## 2026-11-21: Portable demo handover and current main
+
+The demonstrator uses a Mac. `npm run demo` starts a small dedicated launcher
+instead of requiring shell-specific environment assignments. The launcher
+reads its port from demo configuration, skips environment-file loading and
+imports the backend without its normal background timers. It binds locally;
+it does not deploy a public service or change the normal backend start command.
+
+The main merge retains its proactive watch and tests. The integration fixture
+also disables the new proactive-chat timer so its existing mock-chat assertions
+remain isolated from unsolicited messages. This tests the forecast flow, not
+the combined background alert timing. Fresh-checkout verification and the
+Mac-specific setup boundary are recorded in `docs/VALIDATION.md`.
