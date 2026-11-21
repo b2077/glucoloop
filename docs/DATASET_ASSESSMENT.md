@@ -6,6 +6,10 @@ No patient records were downloaded, access applications submitted or model fits
 run. Cohort sizes below describe published studies, not verified usable releases.
 Our current models still use synthetic Bergman-style simulation, not NHS data.
 
+The follow-up [physiological-context assessment](PHYSIOLOGY_DATA_ASSESSMENT.md)
+extends this shortlist to menstrual cycles, menopause, measured hormones, sleep,
+exercise and a proposed richer demonstration.
+
 ## Recommendation
 
 For **reported psychological stress**, investigate T1DEXI first, conditional on
