@@ -13,3 +13,9 @@ port = 18101
 warmup_requests = 5
 measured_requests = 100
 target_p95_ms = 100
+
+[integration]
+backend_port = 18110
+ml_port = 18111
+stream_minutes = 185
+acceleration = 3600

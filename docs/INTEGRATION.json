@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "real_stream_and_complete_forecast",
+    "mock_chat_checkin_updates_forecast",
+    "drift_path",
+    "dropout_path",
+    "ml_unavailable_returns_502"
+  ],
+  "mock_chat": true,
+  "log_directory": "/tmp/glucoloop-integration-j6d0solz",
+  "local_services": {
+    "backend": "http://127.0.0.1:18110",
+    "ml": "http://127.0.0.1:18111"
+  },
+  "simulated_minutes": 185,
+  "observed_drift_action": "alarm_only",
+  "status": "passed",
+  "failure_handling": "dropout and stopped ML return 502",
+  "elapsed_seconds": 1.303
+}

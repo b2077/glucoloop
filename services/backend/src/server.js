@@ -29,7 +29,8 @@ function recordRequest(method, path, status, ms) {
 // ---- helpers ------------------------------------------------------------------
 const json = (res, code, obj) => {
   const b = JSON.stringify(obj);
-  res.writeHead(code, { "Content-Type": "application/json", "Content-Length": b.length });
+  // HTTP counts UTF-8 bytes; character counts truncate replies with symbols.
+  res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(b) });
   res.end(b);
 };
 

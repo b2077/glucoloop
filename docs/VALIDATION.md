@@ -41,6 +41,15 @@ It does not check the medical validity of a prediction.
 
 ## Tests and limitations
 
+The cross-service integration check also passed on 2026-11-21. It ingested all
+37 readings over 185 simulated minutes, loaded real saved models through the
+backend forecast route, updated a check-in through mock chat, propagated sensor
+drift, rejected a fully missing window and returned an error after ML stopped.
+The first run exposed truncated Unicode JSON chat replies; a focused test
+reproduced the failure and the backend response writer was corrected. The
+backend suite now has 34 passing tests. See `INTEGRATION.json` for results and
+`PR_REVIEW_NOTES.md` for the product-scope and teammate-pipeline explanation.
+
 Nine Python regression tests cover independent model selection, the final
 24-hour block, missing model files, shared-scenario rejection, worker thread
 limits, causal history, scenario isolation and matching feature construction.

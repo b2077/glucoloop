@@ -156,6 +156,19 @@ runs the tests. None of them call external services. `python benchmark.py`
 measures prediction response times and writes `docs/LATENCY.json`. The
 target is that 95% of requests finish within 100 ms.
 
+From the repository root, `python tests/integration/ml_flow.py` starts isolated
+backend and ML services, streams 185 simulated minutes, and checks forecasts,
+mock chat check-ins and sensor/service failures. It requires the saved models,
+the ML Python dependencies and Node.js. It calls no paid APIs, uses separate
+in-memory patient history, and stops its own services. Results are saved to
+`docs/INTEGRATION.json`.
+
+The intended five-hour spare-vial/pen planning feature is separate from the
+prototype treatment-action classifier and has not been implemented. It needs
+remaining-stock and spare-inventory inputs that current messages do not carry.
+See `docs/PR_REVIEW_NOTES.md` for the scope clarification and the explanation of
+how the Bergman simulator already supplies training data to the learned models.
+
 ## Repository layout
 
 | Path | Contents | Owner [delete this column after the hackathon] |

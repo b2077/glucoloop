@@ -1,14 +1,13 @@
 # Open work
 
-- 2026-11-21: Source: requested pull request on `feat/parallel-fast-training`.
-  Publish the prepared changes to `b2077/glucoloop` and open the pull request.
-  Status: blocked by the central GitHub owner policy rejecting `b2077`; the
-  connected GitHub app returned 404 and GitHub CLI has no active login.
-- 2026-11-21: Source: training restart and held-out evaluation. Investigate
-  missing suspension and correction-bolus classes in the saved classifier
-  despite 91.9% overall accuracy. Status: open; inspect training-label
-  coverage and per-class performance
-  before relying on the simulated action policy.
+- 2026-11-21: Source: user clarification of the intended action feature.
+  Design a five-hour spare-vial/pen planning feature using remaining insulin,
+  consumption estimates and available spares. Replace user-facing treatment
+  recommendations in chat, contracts and mobile UI after agreeing the design.
+  Status: proposed, not implemented; no inventory fields currently exist.
+  The inherited classifier still lacks suspension and correction-bolus classes
+  and must not be presented as a validated treatment policy. See
+  `docs/PR_REVIEW_NOTES.md`.
 - 2026-11-21: Source: leakage review of simulator labels. Envelope blocks use
   the current sample through 235 minutes rather than strictly future 5–240
   minute windows; action labels similarly end at 55 minutes and shorten near

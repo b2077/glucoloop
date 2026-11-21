@@ -104,6 +104,13 @@ describe("REST API", () => {
     assert.ok(Array.isArray(body.toolCalls));
   });
 
+  test("POST /chat preserves Unicode JSON replies", async () => {
+    const { status, body } = await post("/chat/api-test", { message: "I slept 7.5 hours" });
+    assert.equal(status, 200);
+    assert.ok(body.reply.includes("—"));
+    assert.deepEqual(body.toolCalls, ["log_checkin", "predict"]);
+  });
+
   test("GET unknown path → 404", async () => {
     const { status } = await get("/nope");
     assert.equal(status, 404);

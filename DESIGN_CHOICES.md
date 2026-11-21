@@ -35,6 +35,14 @@ earlier features. Training explicitly rejects overlapping scenario identifiers.
 These controls check chronology and scenario isolation. They do not prove that
 the simulator represents independent real patients or establish clinical safety.
 
+## 2026-11-21: Preserve Unicode in backend JSON responses
+
+The cross-service check failed when a mock chat reply contained an em dash.
+The backend used JavaScript string length for HTTP `Content-Length`, which counts
+characters rather than UTF-8 bytes. Clients therefore read a truncated response
+and could not parse its JSON. The response writer now uses `Buffer.byteLength`.
+A focused backend test reproduces the old failure and protects Unicode replies.
+
 ## Verification and remaining limits
 
 See `docs/VALIDATION.md` for measured training time, latency and test boundaries.
