@@ -3,6 +3,7 @@
  * Tabs: Dashboard | Ella (chat) | Insights (24 h envelope).
  * Data: polls the backend (default http://localhost:8100, set API_URL below or
  * use `EXPO_PUBLIC_API_URL` when starting expo).
+ * Uses the FE-issue-#5 endpoints: /tir, /readings, /recommendations, profile.
  */
 import React, { useEffect, useState, useCallback } from "react";
 import {
@@ -87,6 +88,71 @@ function ActionCard({ forecast }) {
 }
 
 // ------------------------------------------------------------------ screens
+const TIR_RANGES = [
+  { id: "1h", label: "1 h", minutes: 60 },
+  { id: "24h", label: "24 h", minutes: 1440 },
+];
+
+function TirCard() {
+  const [range, setRange] = useState("24h");
+  const [tir, tirErr] = usePoll(`/tir/${PATIENT}?range=${range}`, 15000);
+  const pct = tir?.tir_pct;
+  return (
+    <Card title="Time in range (4–10 mmol/L)">
+      <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>
+        {TIR_RANGES.map((r) => (
+          <Pressable key={r.id} onPress={() => setRange(r.id)}
+            style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8,
+                     backgroundColor: range === r.id ? "#1565C0" : "#E8ECF4" }}>
+            <Text style={{ fontWeight: "700", color: range === r.id ? "#fff" : "#666" }}>{r.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {tirErr || pct == null ? (
+        <Text style={s.dim}>Not enough readings yet — time in range appears as the stream fills.</Text>
+      ) : (
+        <>
+          <Text style={{ fontSize: 34, fontWeight: "800" }}>{Math.round(pct)}%</Text>
+          <View style={{ height: 12, borderRadius: 6, backgroundColor: "#EAEEF3", overflow: "hidden", marginTop: 8, flexDirection: "row" }}>
+            <View style={{ width: `${Math.min(100, tir.in_range / Math.max(1, tir.total) * 100)}%`, backgroundColor: "#2E7D32" }} />
+            <View style={{ width: `${Math.min(100, tir.low / Math.max(1, tir.total) * 100)}%`, backgroundColor: "#C62828" }} />
+            <View style={{ flex: 1, backgroundColor: "#EF6C00" }} />
+          </View>
+          <Text style={s.dim}>
+            {tir.in_range}/{tir.total} in range · {Math.round(tir.low_pct ?? 0)}% low · {Math.round(tir.high_pct ?? 0)}% high
+          </Text>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function RecommendationsCard() {
+  const [recs] = usePoll(`/recommendations/${PATIENT}`, 15000);
+  const list = (recs?.recommendations ?? []).slice(-4).reverse();
+  const levelColor = { critical: "#C62828", warning: "#EF6C00", info: "#1565C0" };
+  return (
+    <Card title="Proactive recommendations">
+      {list.length === 0
+        ? <Text style={s.dim}>Nothing triggered — the engine re-checks every minute against forecast + profile.</Text>
+        : list.map((r) => (
+            <View key={r.id} style={{ marginBottom: 8, padding: 10, borderRadius: 8,
+                                      backgroundColor: r.level === "critical" ? "#FDECEA" : r.level === "warning" ? "#FFF3E0" : "#E8F5E9" }}>
+              <Text>
+                <Text style={{ color: levelColor[r.level] || "#1565C0", fontWeight: "800" }}>
+                  [{(r.type || r.level).replace(/_/g, " ").toUpperCase()}]{" "}
+                </Text>
+                {r.message}
+              </Text>
+              {r.suggested_action
+                ? <Text style={s.dim}>suggested action: {r.suggested_action.replace(/_/g, " ")} · approve on the pump-action card or in chat</Text>
+                : null}
+            </View>
+          ))}
+    </Card>
+  );
+}
+
 function Dashboard() {
   const [state] = usePoll(`/state/${PATIENT}`);
   const [forecast] = usePoll(`/forecast/${PATIENT}`, 10000);
@@ -120,6 +186,8 @@ function Dashboard() {
       <Card title="Last 2 h">
         <SparkGlucose history={state?.history} />
       </Card>
+      <TirCard />
+      <RecommendationsCard />
       <ActionCard forecast={forecast} />
       <Card title="Alerts">
         {(state?.alerts ?? []).length === 0
@@ -195,9 +263,49 @@ function Chat() {
 
 function Insights() {
   const [forecast] = usePoll(`/forecast/${PATIENT}`, 15000);
+  const [readings] = usePoll(`/readings/${PATIENT}`, 30000);
+  const [state] = usePoll(`/state/${PATIENT}`, 30000);
   const blocks = forecast?.long ?? [];
+  const profile = state?.profile;
+
+  // Downsample the 24 h readings (up to 288) for the chart.
+  const all = (readings?.readings ?? []).map((r) => r.cgm?.glucose_mgdl).filter((x) => x != null);
+  const pts = [];
+  if (all.length > 1) {
+    const step = Math.max(1, Math.floor(all.length / 96));
+    for (let i = 0; i < all.length; i += step) pts.push(all[i]);
+    if ((all.length - 1) % step !== 0) pts.push(all[all.length - 1]);
+  }
+
   return (
     <ScrollView style={s.scroll} contentContainerStyle={{ padding: 14, gap: 12 }}>
+      <Card title="Glucose — last 24 hours">
+        {pts.length < 2 ? (
+          <Text style={s.dim}>waiting for readings…</Text>
+        ) : (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", height: 120, gap: 1 }}>
+              {pts.map((g, i) => {
+                const max = Math.max(...pts, 180), min = Math.min(...pts, 60);
+                const h = 120 * (g - min) / (max - min || 1);
+                const color = g < 72 ? "#C62828" : g > 180 ? "#EF6C00" : "#2E7D32";
+                return <View key={i} style={{ flex: 1, height: Math.max(3, h), backgroundColor: color, borderRadius: 1 }} />;
+              })}
+            </View>
+            <Text style={s.dim}>
+              {readings.count} readings · 5-min cadence · red under 72, orange over 180 mg/dL
+            </Text>
+          </>
+        )}
+      </Card>
+      {profile ? (
+        <Card title="Your profile">
+          <Text style={s.dim}>
+            IC ratio {profile.ic_ratio_g_per_u} g/U · ISF {profile.isf_mgdl_per_u} mg/dL/U ·
+            basal {profile.basal_u_hr} U/h · target {profile.target_mgdl} mg/dL
+          </Text>
+        </Card>
+      ) : null}
       <Card title="24-hour risk envelope">
         <Text style={s.dim}>
           Each block shows the predicted 10th percentile of the minimum and 90th
