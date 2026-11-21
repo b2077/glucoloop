@@ -14,8 +14,8 @@
  * unchanged, so apps/mobile needs no changes.
  */
 import { makeToolSet } from "./tools.js";
-
 import { SYSTEM_PROMPT } from "./prompt.js";
+import { buildAgentContext } from "./context.js";
 
 const MODEL = process.env.MISTRAL_MODEL || "mistral-large-latest";
 const API = "https://api.mistral.ai/v1";
@@ -116,16 +116,19 @@ function conversationBase(toolDefs) {
 async function agentsApiRun(deps, tools, userMessage) {
   const patientId = deps.patientId;
   const toolCalls = [];
+  // Inject current BE context on every turn so the LLM always sees live state
+  const contextBlock = buildAgentContext(deps.store, patientId);
+  const msgWithContext = `${contextBlock}\n\nPatient says: ${userMessage}`;
 
   let convId = conversations.get(patientId);
   let resp;
   if (convId) {
     resp = await mistral(`/conversations/${convId}`, {
-      inputs: [{ object: "entry", type: "message.input", role: "user", content: userMessage }],
+      inputs: [{ object: "entry", type: "message.input", role: "user", content: msgWithContext }],
     });
   } else {
     // Base-model conversations don't accept a system role, so seed the prompt
-    // as a user instruction + assistant acknowledgement.
+    // as a user instruction + assistant acknowledgement, then the context+message.
     resp = await mistral("/conversations", {
       ...conversationBase(tools.defs),
       stream: false,
@@ -133,7 +136,7 @@ async function agentsApiRun(deps, tools, userMessage) {
         { object: "entry", type: "message.input", role: "user", content: SYSTEM_PROMPT },
         { object: "entry", type: "message.output", role: "assistant",
           content: "Understood — I'll follow these instructions." },
-        { object: "entry", type: "message.input", role: "user", content: userMessage },
+        { object: "entry", type: "message.input", role: "user", content: msgWithContext },
       ],
     });
     convId = resp.conversation_id;
