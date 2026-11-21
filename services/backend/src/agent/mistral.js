@@ -96,48 +96,45 @@ export function extractText(entry) {
   return "";
 }
 
-// ---- hosted agent + per-patient conversations (Agents API mode) ------------
+// ---- hosted conversations (Conversations API mode) ---------------------------
+// Uses POST /v1/conversations with model+tools directly (works on orgs where
+// agent creation is disabled). Set MISTRAL_AGENT_ID to use a hosted agent
+// instead. History lives server-side per conversation.
 
-let agentIdPromise = null;
 const conversations = new Map(); // patientId -> conversation_id
 
-/** Reset cached agent/conversation state (tests). */
+/** Reset cached conversation state (tests). */
 export function resetAgentState() {
-  agentIdPromise = null;
   conversations.clear();
 }
 
-async function getAgentId(toolDefs) {
-  if (process.env.MISTRAL_AGENT_ID) return process.env.MISTRAL_AGENT_ID;
-  if (!agentIdPromise) {
-    agentIdPromise = mistral("/agents", {
-      name: "glucoloop-ella",
-      description: "GlucoLoop conversational assistant (Ella): check-ins + evidence-based pump guidance.",
-      model: MODEL,
-      instructions: SYSTEM_PROMPT,
-      tools: toolDefs,
-      temperature: 0.4,
-    }).then((a) => a.id);
-  }
-  return agentIdPromise;
+function conversationBase(toolDefs) {
+  if (process.env.MISTRAL_AGENT_ID) return { agent_id: process.env.MISTRAL_AGENT_ID };
+  return { model: MODEL, tools: toolDefs };
 }
 
 async function agentsApiRun(deps, tools, userMessage) {
-  const agentId = await getAgentId(tools.defs);
   const patientId = deps.patientId;
   const toolCalls = [];
 
   let convId = conversations.get(patientId);
   let resp;
   if (convId) {
-    resp = await mistral(`/conversations/${convId}/messages`, {
+    resp = await mistral(`/conversations/${convId}`, {
       inputs: [{ object: "entry", type: "message.input", role: "user", content: userMessage }],
     });
   } else {
+    // Base-model conversations don't accept a system role, so seed the prompt
+    // as a user instruction + assistant acknowledgement.
     resp = await mistral("/conversations", {
-      agent_id: agentId,
+      ...conversationBase(tools.defs),
       stream: false,
-      inputs: [{ object: "entry", type: "message.input", role: "user", content: userMessage }],
+      inputs: [
+        { object: "entry", type: "message.input", role: "user", content: SYSTEM_PROMPT },
+        { object: "entry", type: "message.output", role: "assistant",
+          content: "Understood — I'll follow these instructions." },
+        { object: "entry", type: "message.input", role: "user", content: userMessage },
+      ],
     });
     convId = resp.conversation_id;
     conversations.set(patientId, convId);
@@ -162,13 +159,12 @@ async function agentsApiRun(deps, tools, userMessage) {
       const out = argErr ? { error: argErr } : await tools.execute(call.name, args, deps);
       results.push({
         object: "entry",
-        type: "function.call_result",
+        type: "function.result",
         tool_call_id: call.tool_call_id,
-        name: call.name,
         result: JSON.stringify(out),
       });
     }
-    resp = await mistral(`/conversations/${convId}/messages`, { inputs: results });
+    resp = await mistral(`/conversations/${convId}`, { inputs: results });
   }
   return { reply: "Let me check your latest data again in a moment.", toolCalls };
 }

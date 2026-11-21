@@ -52,20 +52,18 @@ test("extractText handles string and chunk-array content", () => {
 test("agents api: creates agent once, starts conversation, returns text reply", async () => {
   const calls = [];
   mockFetch((url, body) => {
-    if (url.endsWith("/agents")) {
-      assert.equal(body.instructions.length > 0, true);
-      assert.equal(body.tools.length, 3);
-      return { status: 200, json: { id: "ag_123" } };
-    }
     if (url.endsWith("/conversations")) {
-      assert.equal(body.agent_id, "ag_123");
-      assert.equal(body.inputs[0].role, "user");
+      assert.equal(body.model, "mistral-large-latest");
+      assert.equal(body.tools.length, 3);
+      assert.equal(body.inputs[0].role, "user");     // system prompt seeded as user msg
+      assert.equal(body.inputs[1].role, "assistant"); // ack
+      assert.equal(body.inputs[2].role, "user");      // real message
       return { status: 200, json: {
         conversation_id: "conv_1",
         outputs: [{ type: "message.output", content: "Hi! How much did you eat?" }],
       } };
     }
-    if (url.includes("/conversations/conv_1/messages")) {
+    if (url.includes("/conversations/conv_1")) {
       return { status: 200, json: {
         outputs: [{ type: "message.output", content: "Noted — 80 g logged." }],
       } };
@@ -82,14 +80,12 @@ test("agents api: creates agent once, starts conversation, returns text reply", 
   const r2 = await runAgent(deps, [], "I ate 80g carbs");
   const convCalls = calls.filter((c) => c.url.includes("/conversations"));
   assert.equal(convCalls.filter((c) => c.url.endsWith("/conversations")).length, 1);
-  assert.ok(convCalls.some((c) => c.url.includes("/conversations/conv_1/messages")));
-  assert.equal(calls.filter((c) => c.url.endsWith("/agents")).length, 1);
+  assert.ok(convCalls.some((c) => c.url.includes("/conversations/conv_1")));
 });
 
 test("agents api: executes function.call and appends function.call_result", async () => {
   const calls = [];
   mockFetch((url, body) => {
-    if (url.endsWith("/agents")) return { status: 200, json: { id: "ag_9" } };
     if (url.endsWith("/conversations")) {
       return { status: 200, json: {
         conversation_id: "conv_9",
@@ -99,10 +95,10 @@ test("agents api: executes function.call and appends function.call_result", asyn
         }],
       } };
     }
-    if (url.includes("/messages")) {
+    if (/\/conversations\/conv_\w+$/.test(url)) {
       // function.call_result appended with the tool output
       const entry = body.inputs[0];
-      assert.equal(entry.type, "function.call_result");
+      assert.equal(entry.type, "function.result");
       assert.equal(entry.tool_call_id, "fc_1");
       const result = JSON.parse(entry.result);
       assert.ok(result.error); // ML unreachable in tests -> error payload is fine
@@ -123,7 +119,6 @@ test("agents api: executes function.call and appends function.call_result", asyn
 test("agents api: bad tool args produce error result, not a crash", async () => {
   const calls = [];
   mockFetch((url, body) => {
-    if (url.endsWith("/agents")) return { status: 200, json: { id: "ag_x" } };
     if (url.endsWith("/conversations")) {
       return { status: 200, json: {
         conversation_id: "conv_x",
@@ -131,7 +126,7 @@ test("agents api: bad tool args produce error result, not a crash", async () => 
                     arguments: JSON.stringify({ level: "bogus" }) }],
       } };
     }
-    if (url.includes("/messages")) {
+    if (/\/conversations\/conv_\w+$/.test(url)) {
       const result = JSON.parse(body.inputs[0].result);
       assert.match(result.error, /send_alert.level/);
       return { status: 200, json: { outputs: [{ type: "message.output", content: "ok" }] } };
