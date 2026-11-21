@@ -2,6 +2,8 @@
  *
  * Real mode  : MISTRAL_API_KEY set -> api.mistral.ai chat completions with
  *              function calling (tools: predict, log_checkin, send_alert).
+ *              Includes retry on transient failures (5xx / network) and
+ *              validates tool-call arguments before executing.
  * Mock mode  : no key -> deterministic scripted agent that CALLS THE SAME TOOL
  *              IMPLEMENTATIONS, so the demo works without a key.
  */
@@ -9,6 +11,60 @@ import { makeToolSet } from "./tools.js";
 import { SYSTEM_PROMPT } from "./prompt.js";
 
 const MODEL = process.env.MISTRAL_MODEL || "mistral-large-latest";
+const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
+const MAX_ROUNDS = 3;
+const MAX_RETRIES = 1;
+
+/** Fetch with one retry on 5xx or network error. */
+async function fetchWithRetry(url, opts, retries = MAX_RETRIES) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, opts);
+      if (res.status >= 500 && attempt < retries) {
+        lastErr = new Error(`mistral api ${res.status}`);
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
+/** Validate tool call arguments against expected shape. Returns error string or null. */
+function validateToolArgs(name, args) {
+  if (!args || typeof args !== "object") return `${name}: args must be an object`;
+  switch (name) {
+    case "predict":
+      return null; // no args expected
+    case "log_checkin": {
+      for (const [k, v] of Object.entries(args)) {
+        if (typeof v !== "number" && typeof v !== "string")
+          return `log_checkin.${k} must be number or string`;
+      }
+      if (args.stress_1_5 !== undefined && (args.stress_1_5 < 1 || args.stress_1_5 > 5))
+        return "log_checkin.stress_1_5 must be 1..5";
+      return null;
+    }
+    case "send_alert": {
+      if (!args.level || !["info", "warning", "critical"].includes(args.level))
+        return "send_alert.level must be info|warning|critical";
+      if (!args.message || typeof args.message !== "string")
+        return "send_alert.message (string) required";
+      return null;
+    }
+    default:
+      return `unknown tool ${name}`;
+  }
+}
 
 export async function runAgent(deps, history, userMessage) {
   const tools = makeToolSet(deps);
@@ -23,8 +79,8 @@ export async function runAgent(deps, history, userMessage) {
   }
 
   const toolCalls = [];
-  for (let round = 0; round < 3; round++) {
-    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const res = await fetchWithRetry(MISTRAL_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,6 +95,13 @@ export async function runAgent(deps, history, userMessage) {
       messages.push(choice);
       for (const tc of choice.tool_calls) {
         const args = JSON.parse(tc.function.arguments || "{}");
+        const argErr = validateToolArgs(tc.function.name, args);
+        if (argErr) {
+          toolCalls.push(tc.function.name);
+          messages.push({ role: "tool", tool_call_id: tc.id,
+                          content: JSON.stringify({ error: argErr }) });
+          continue;
+        }
         const out = await tools.execute(tc.function.name, args, deps);
         toolCalls.push(tc.function.name);
         messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(out) });
@@ -65,7 +128,7 @@ export async function mockAgent(tools, msg) {
     const g = num(msg) ?? 60;
     await call("log_checkin", { carbs_g: g });
     const f = await call("predict", {});
-    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
+    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["log_checkin", "predict"] };
     return { reply:
       `Got it — about ${g} g of carbs logged. Your forecast: ${f.short.point} mg/dL in 5 ` +
       `minutes, ${f.medium[f.medium.length - 1].point} in an hour. Pump recommendation: ` +
@@ -76,7 +139,7 @@ export async function mockAgent(tools, msg) {
     const h = num(msg) ?? 7;
     await call("log_checkin", { sleep_hours: h });
     const f = await call("predict", {});
-    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
+    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["log_checkin", "predict"] };
     return { reply:
       `${h} hours — noted, that feeds your overnight risk forecast. Tonight's first ` +
       `window: min ${f.long[0].min_q10} mg/dL (${f.long[0].risk} risk). Did you exercise today?`,
@@ -87,7 +150,7 @@ export async function mockAgent(tools, msg) {
     const mins = minsCache ? Number(minsCache[1]) : (num(msg) ?? 30);
     await call("log_checkin", { exercise_min: mins, exercise_type: "cardio", intensity: "moderate" });
     const f = await call("predict", {});
-    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
+    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["log_checkin", "predict"] };
     let extra = "";
     if (f.action.class === "reduce_basal" || f.action.class === "suspend") {
       await call("send_alert", {
@@ -109,7 +172,7 @@ export async function mockAgent(tools, msg) {
     const lvl = Math.min(5, Math.max(1, num(msg) ?? 3));
     await call("log_checkin", { stress_1_5: lvl });
     const f = await call("predict", {});
-    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["predict"] };
+    if (!f || f.error) return { reply: NO_DATA_REPLY, toolCalls: ["log_checkin", "predict"] };
     return { reply:
       `Thanks for being honest — stress of ${lvl}/5 tends to nudge glucose up, so I've ` +
       `factored it in. Current 1-hour forecast: ${f.medium[f.medium.length - 1].point} mg/dL. ` +

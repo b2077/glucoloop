@@ -66,18 +66,22 @@ export function makeToolSet(deps) {
           return { error: "no_data",
                    hint: "no device readings ingested yet for this patient" };
         }
-        const r = await fetch(`${mlUrl}/predict`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ patient_id: patientId, readings: window }),
-        });
-        if (!r.ok) {
-          const detail = await r.text().catch(() => "");
-          return { error: "no_data", hint: `ml service ${r.status} ${detail}` };
+        try {
+          const r = await fetch(`${mlUrl}/predict`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ patient_id: patientId, readings: window }),
+          });
+          if (!r.ok) {
+            const detail = await r.text().catch(() => "");
+            return { error: "ml_error", hint: `ml service ${r.status} ${detail}` };
+          }
+          const f = await r.json();
+          store.get(patientId).lastForecast = f;
+          return f;
+        } catch (e) {
+          return { error: "ml_unreachable", hint: `could not reach ${mlUrl}: ${e.message}` };
         }
-        const f = await r.json();
-        store.get(patientId).lastForecast = f;
-        return f;
       }
       case "log_checkin": {
         const ci = store.addCheckin(patientId, { ...args });
