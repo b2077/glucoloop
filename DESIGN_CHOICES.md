@@ -43,6 +43,17 @@ characters rather than UTF-8 bytes. Clients therefore read a truncated response
 and could not parse its JSON. The response writer now uses `Buffer.byteLength`.
 A focused backend test reproduces the old failure and protects Unicode replies.
 
+## 2026-11-21: Resolve main integration without changing local generated data
+
+The merge was prepared in an isolated checkout because main changes generated
+datasets and tracks models that were untracked in the feature checkout. Main's
+backend server was preserved exactly, and its API tests retain the additional
+Unicode regression. Metrics and latency were rerun using the merged code and
+committed simulated data; retrained binaries remain local validation outputs.
+The integration fixture explicitly selects test mode to skip the environment
+loader and disables the unrelated periodic recommendation timer. Forecast,
+chat check-in and failure paths pass against main's newer backend.
+
 ## Verification and remaining limits
 
 See `docs/VALIDATION.md` for measured training time, latency and test boundaries.

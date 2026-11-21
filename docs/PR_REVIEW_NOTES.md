@@ -23,7 +23,12 @@ errors at each horizon, envelope coverage and runtime should be measured before
 choosing or combining predictors. Current simulation-only validation cannot
 establish performance on real patients.
 
-## Important clarification: spare insulin planning is the intended feature
+## Product scope: glucose forecasts and proposed supply planning
+
+The immediate priority is understanding glucose influences and improving
+forecast signals. Hormonal context is longer-term work. Supply planning below
+is a separate proposed use; no treatment adjustment follows automatically from
+an estimated percentage change in glucose.
 
 The user clarified that the desired action is to plan whether to carry a spare
 insulin vial or pen before leaving home for roughly five hours. This concerns
@@ -31,11 +36,14 @@ available supplies. It does not require recommending a change in insulin
 delivery. In particular, `suspend`, `reduce_basal` and `correction_bolus` belong
 to a treatment-action policy and do not answer the spare-supply question.
 
-The current classifier is inherited prototype functionality. It has training
-examples for only three of its intended five classes and cannot recommend
-suspension or correction boluses. It predicts categories, not dose quantities or
-durations. Current code still exposes these action categories in the forecast,
-chat and mobile interface; this PR does not implement their replacement.
+The current classifier is inherited prototype functionality. The final run on
+main's data has training examples for all five classes and 95.4% evaluation
+accuracy. Evaluation contains no true suspension or correction-bolus cases,
+so this score cannot establish recognition of those rare actions. The earlier
+three-class training result concerned a smaller local dataset. The classifier
+predicts categories, not dose quantities or durations. Current code still exposes
+these categories in the forecast, chat and mobile interface; this PR does not
+implement their replacement.
 
 A supply-planning feature needs the usable insulin remaining in the current
 container, expected time away, estimated consumption and uncertainty, and
@@ -101,3 +109,23 @@ the live Mistral API, real pumps or clinical correctness. The mock chat's use of
 the current action field is an integration observation, not endorsement of the
 action recommendation. Model and simulator limitations remain in
 `../DEFERRED_WORK.md` and `VALIDATION.md`.
+
+## Maintainer merge feedback addressed
+
+The merge preserves main's backend server, including its existing UTF-8 byte
+count, environment loader and newer APIs. Both branches' API tests are retained.
+The isolated integration fixture now sets test mode so the environment loader
+cannot activate live API credentials; the periodic recommendation timer is
+disabled for this focused flow. No backend-to-ML contract change was needed.
+The README retains the newcomer explanation alongside main's backend references,
+and metrics were regenerated on the merged committed simulated dataset.
+
+Main's generated datasets and eighteen incoming model files are preserved
+exactly. Validation used locally retrained replacements, which are not committed;
+run training before serving the updated feature path. The final run used 24/6
+disjoint scenarios and 20,318/5,041 usable training/evaluation rows, completing
+in 1.816 seconds. The one-hour forecast error was 3.9 mg/dL, and local prediction
+latency had an 8.32 ms 95th percentile over 100 requests with no failures.
+These are simulation and local-service results, not patient validation. No real
+OpenAPS records have been acquired, no new personalization demonstration is
+implemented, and hormonal context remains longer-term work.

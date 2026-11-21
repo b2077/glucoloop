@@ -121,7 +121,12 @@ def main():
         backend_process = start(
             "backend",
             [node, str(ROOT / "services/backend/src/server.js")],
-            {"PORT": str(config["backend_port"]), "ML_URL": ml},
+            {
+                "PORT": str(config["backend_port"]),
+                "ML_URL": ml,
+                "NODE_ENV": "test",
+                "RECO_INTERVAL_S": "0",
+            },
         )
         ready(ml_process, ml + "/health")
         ready(backend_process, backend + "/health")

@@ -1,11 +1,11 @@
 # GlucoLoop
 
-GlucoLoop is a hackathon prototype that helps a person with diabetes who wears
-an insulin pump decide what the pump should do next. It watches their device
-readings, asks them short questions in a chat, forecasts where their blood
-glucose is heading, and then recommends one pump action with a reason. The
-patient always makes the final decision. GlucoLoop never changes the pump on
-its own.
+GlucoLoop is a hackathon prototype that combines device readings and short
+conversational check-ins to forecast where blood glucose is heading. The
+immediate focus is understanding glucose variation and producing useful
+forecast signals. It also includes experimental pump-action suggestions based
+on simulated data. These are not validated treatment instructions, and
+GlucoLoop never changes a physical pump on its own.
 
 ## What problem this solves
 
@@ -22,7 +22,7 @@ gathers the personal context through a friendly chat assistant called Ella, and
 feeds both into machine-learning models. The models do two jobs. They forecast
 glucose over the next hour and the next day, and they suggest one of five pump
 actions. Because a chat answer changes the models' inputs, telling Ella "I just
-ate 60 g of carbohydrate" visibly moves every forecast and can change the
+ate 60 g of carbohydrate" can affect the forecasts and change the
 recommendation.
 
 ## Glossary
@@ -32,11 +32,11 @@ recommendation.
 | CGM | Continuous glucose monitor. A skin sensor that reports glucose every 5 minutes, in mg/dL. |
 | Basal | The slow, steady background insulin a pump delivers all day. |
 | Bolus | A one-off dose, usually for a meal or to correct a high reading. |
-| IOB | Insulin on board, meaning insulin delivered but not yet used up. Here it is measured as the deviation from normal basal delivery. |
+| IOB | Insulin on board: insulin already delivered and estimated still active. It is not insulin left in the pump. |
 | Feature vector | The fixed list of numbers describing "the situation now" that every model receives. |
 | Fusion service | The backend that merges device readings and chat answers into that feature vector. |
 | Envelope | A low-to-high band that glucose is expected to stay within during a time block. |
-| q10 / q90 | The 10th and 90th percentiles. A q10 of 80 means "only a 10% chance of going below 80". |
+| q10 / q90 | Estimated 10th and 90th percentiles. The intended tail frequencies still need checking against real observations. |
 | Device fault | A sensor that drifts or drops out, or a blocked pump line (an "occlusion"). |
 
 ## How it works
@@ -79,10 +79,10 @@ standard set of equations describing how glucose and insulin interact in the
 body. On top of that, it adds meals, exercise, stress, sleep and deliberate
 device faults, and it produces many labelled days of synthetic patients.
 
-The central idea is how the "correct" pump action is labelled. While generating
-data, the simulator knows what really happens next. An expert rule uses that
-knowledge of the future to choose the best action at each moment. The action
-model is then trained to reproduce the expert's choice using only information
+The action labels come from a handwritten rule. While generating data, the
+simulator knows what happens next under its own assumptions. The rule uses
+that future to assign a category, rather than a clinician establishing the
+correct action. The action model learns to reproduce that choice using information
 that would be available in real time. In effect, the model learns to act as if
 it could see the future, without actually seeing it. This is also its main
 weakness. It can only be as good as the expert rule, and only within the kinds
@@ -97,22 +97,27 @@ trained separately:
 | Day envelope | 12 | For each of the next six 4-hour blocks, the q10 of the lowest glucose and the q90 of the highest. Blocks that may go too low or too high become "risk windows". |
 | Action policy | 1 | One of `no_op`, `alarm_only`, `reduce_basal`, `suspend`, `correction_bolus` |
 
-The prediction service loads all 18 model files when the first prediction
-request arrives. If any file is missing, that request fails with an error
+The prediction service loads all 18 model files on its first health check or
+prediction request. If any file is missing, that request fails with an error
 rather than quietly returning partial results. Evaluation results on separate
-held-out scenarios are in `docs/METRICS.md`. In the current draft, the one-hour
-forecast is off by about 7.5 mg/dL on average. The action policy is 90%
-accurate, but `suspend` and `correction_bolus` never occurred in the training
-data, so it cannot yet recommend them.
+held-out scenarios are in `docs/METRICS.md`. On main's committed simulated data,
+the one-hour forecast is off by 3.9 mg/dL on average. The action policy has
+examples of all five classes in training and 95.4% evaluation accuracy. However,
+evaluation has no true `suspend` or `correction_bolus` cases, so it cannot tell
+us how reliably the model recognizes those actions. These results do not
+establish performance on real patients.
 
 ## Running it
 
 Each service runs in its own terminal. Start them in this order, because each
-one calls the one before it.
+one calls the one before it. Main tracks generated datasets and model files,
+but this PR preserves its incoming binaries rather than committing replacements.
+Train once before serving so the saved models match the updated feature builder.
 
 ```bash
 # 1) ML prediction service on port 8101, from services/ml
 pip install -r requirements.txt
+python -u train.py              # fits and evaluates all 18 models on the supplied data
 python predict_api.py            # or: uvicorn predict_api:app --port 8101
 
 # 2) Backend fusion service and chat agent on port 8100 (Node 18+, no installs), from services/backend
@@ -134,15 +139,18 @@ at simulated minute 600, a pump occlusion at 1500 and a CGM dropout at 2100.
 ### Retraining from scratch
 
 ```bash
-cd services/simulator && python generate_dataset.py --n-train 24 --n-eval 6 --days 3
-cd services/ml && OMP_NUM_THREADS=2 python -u train.py   # rewrites artifacts/ and docs/METRICS.md
+(cd services/simulator && python generate_dataset.py --n-train 24 --n-eval 6 --days 3)
+(cd services/ml && OMP_NUM_THREADS=2 python -u train.py)   # rewrites models and docs/METRICS.md
 ```
 
 Training runs four worker processes in parallel. Each worker limits its
 numerical libraries to `OMP_NUM_THREADS` threads (two by default) and prints
 the limit it actually applied. Without that limit, four workers would each grab
 every CPU core and slow one another down. Each model is saved as soon as it
-finishes.
+finishes. The verified run on 24 training and six evaluation scenarios used
+20,318 and 5,041 usable rows respectively and finished in 1.816 seconds. Windows
+without any usable sensor reading are excluded during training and rejected
+when predicting, rather than filled from future observations.
 
 ## Configuration and tests
 
@@ -155,6 +163,8 @@ From `services/ml`, `python -m unittest test_features test_prediction test_train
 runs the tests. None of them call external services. `python benchmark.py`
 measures prediction response times and writes `docs/LATENCY.json`. The
 target is that 95% of requests finish within 100 ms.
+The final local benchmark measured 8.32 ms at that percentile over 100 requests
+with no failures. It does not measure mobile or internet response time.
 
 From the repository root, `python tests/integration/ml_flow.py` starts isolated
 backend and ML services, streams 185 simulated minutes, and checks forecasts,
@@ -163,8 +173,11 @@ the ML Python dependencies and Node.js. It calls no paid APIs, uses separate
 in-memory patient history, and stops its own services. Results are saved to
 `docs/INTEGRATION.json`.
 
-The intended five-hour spare-vial/pen planning feature is separate from the
-prototype treatment-action classifier and has not been implemented. It needs
+Hormonal, menstrual and menopausal context is longer-term research; those inputs
+are not represented in the current models. No real OpenAPS records have been
+acquired and a new personalization demonstration has not been implemented.
+The proposed five-hour spare-vial/pen
+planning feature is separate and has not been implemented. It needs
 remaining-stock and spare-inventory inputs that current messages do not carry.
 See `docs/PR_REVIEW_NOTES.md` for the scope clarification and the explanation of
 how the Bergman simulator already supplies training data to the learned models.
@@ -192,12 +205,16 @@ how the Bergman simulator already supplies training data to the learned models.
   behaves identically.
 - Every model is trained on simulated physiology. It is a draft of a learned
   policy, not a clinical instrument.
-- The action policy has never seen `suspend` or `correction_bolus` in training,
-  as explained above.
+- Class coverage depends on the generated training scenarios. Read the trained
+  and missing classes in `docs/METRICS.md` before interpreting action accuracy.
+- The inherited models on main may predate the current feature construction.
+  Run training before serving; this PR does not refresh main's tracked binaries.
+- `docs/BACKEND.md` and `docs/schemas.MD` describe main's additional backend APIs.
 
 ## Safety stance
 
 GlucoLoop **recommends** and the patient **approves**. It never doses
 automatically. When a device looks untrustworthy, because of drift, dropout or
-occlusion, it maps to `alarm_only` and never to a dosing change. All guidance
+occlusion, the simulator's rule labels it `alarm_only`. The learned classifier
+is not a guaranteed enforcement of that rule. All guidance
 is labelled "not medical advice" in the app.

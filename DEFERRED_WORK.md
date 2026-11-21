@@ -1,5 +1,10 @@
 # Open work
 
+- 2026-11-21: Source: request for a simple adaptive demonstration. Add a clearly
+  labelled simulation-first forecast-personalisation layer using population
+  predictions and gradually weighted individual errors. Keep insulin delivery
+  and treatment recommendations unchanged. Status: outline pending agreement;
+  no universal exercise/stress percentages or real-patient averages established.
 - 2026-11-21: Source: user clarification of the intended action feature.
   Design a five-hour spare-vial/pen planning feature using remaining insulin,
   consumption estimates and available spares. Replace user-facing treatment
