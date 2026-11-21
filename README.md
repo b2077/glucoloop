@@ -65,7 +65,7 @@ trajectory and the recommended action.
 | `services/backend/` | Eng 2 | REST contract, fusion window building, agent tool flow |
 | `apps/mobile/` | Eng 4 | runs under Expo, polling, approve/dismiss cards |
 | `packages/contracts/index.ts` | team | keep types in sync if you change payloads |
-| `docs/` | Presenter | DEMO_SCRIPT.md, METRICS.md, WORK_PLAN.md |
+| `docs/` | Presenter | DEMO_SCRIPT.md, METRICS.md, WORK_PLAN.md, BACKEND.md (backend tech + limitations) |
 
 ## Known draft limitations (be honest in the pitch)
 
