@@ -38,8 +38,8 @@ function usePoll(path, ms = 5000) {
 }
 
 // ---------------------------------------------------------------- primitives
-const Card = ({ title, children, color = "#fff", style }) => (
-  <View style={[s.card, { backgroundColor: color }, style]}>
+const Card = ({ title = null, children, color = "#fff", style: styleProp = null }) => (
+  <View style={[s.card, { backgroundColor: color }, styleProp]}>
     {title ? <Text style={s.cardTitle}>{title}</Text> : null}
     {children}
   </View>
@@ -126,8 +126,8 @@ function GlucoseLine({ values, height = 96 }) {
 // ------------------------------------------------------------- mini bar chart
 // Deterministic 24 h synthetic series (5-min cadence) used to render the
 // dashboard/insights graphs. Backend untouched; live endpoints stay live.
-function mockSeries(shape) {
-  const n = 288, out = [];
+function mockSeries(shape, n = 288) {
+  const out = [];
   for (let i = 0; i < n; i++) {
     const ts = Date.now() - (n - 1 - i) * 5 * 60 * 1000;
     const h = new Date(ts).getHours() + new Date(ts).getMinutes() / 60;
@@ -144,6 +144,7 @@ function mockSeries(shape) {
   return out;
 }
 const MOCK_HISTORY = mockSeries((p) => ({ cgm: { glucose_mgdl: p.g }, ts: p.ts }));
+const MOCK_WEEK = mockSeries((p) => ({ cgm: { glucose_mgdl: p.g }, ts: p.ts }), 7 * 288);
 
 // ------------------------------------------------------------------ screens
 const TIR_RANGES = [
@@ -189,6 +190,187 @@ function TirCard({ state }) {
 function LineGlucose({ history, height = 96 }) {
   const pts = (history || []).map((r) => r.cgm?.glucose_mgdl).filter((x) => x != null).slice(-24);
   return <GlucoseLine values={pts} height={height} />;
+}
+
+// ------------------------------------ insights mockups (from design screenshot)
+const PIE_COLORS = { low: "#E57368", inRange: "#7CC489", high: "#F2B263" };
+
+/** Pie chart from [{ value, color }] — rotated full-diameter bars, no libs. */
+function PieChart({ segments, size = 210 }) {
+  const total = segments.reduce((a, s) => a + s.value, 0) || 1;
+  const N = 120, thick = 8;
+  const cuts = [];
+  let acc = 0;
+  for (const seg of segments) {
+    if (seg.value <= 0) continue;
+    acc += seg.value / total;
+    cuts.push({ end: acc, color: seg.color, value: seg.value, angle: acc * 360 });
+  }
+  let idx = 0;
+  const colors = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i + 0.5) / N;
+    while (idx < cuts.length - 1 && t >= cuts[idx].end - 1e-9) idx += 1;
+    colors.push(cuts[idx] ? cuts[idx].color : "#E4E9EF");
+  }
+  // % labels at each slice's mid-angle (only if the slice is big enough)
+  let prev = 0;
+  const labels = cuts.map((c) => {
+    const mid = ((prev + c.end) / 2) * 2 * Math.PI; // rad from 12 o'clock cw
+    prev = c.end;
+    const r = size * 0.31;
+    const pct = Math.round((100 * c.value) / total);
+    return pct >= 4 ? {
+      pct,
+      left: size / 2 + r * Math.sin(mid) - 24,
+      top: size / 2 - r * Math.cos(mid) - 10,
+    } : null;
+  });
+  return (
+    <View style={{ width: size, height: size }}>
+      <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden" }}>
+        {colors.map((color, i) => (
+          <View key={i} pointerEvents="none" style={{
+            position: "absolute", width: thick, height: size,
+            left: size / 2 - thick / 2, top: 0,
+            transform: [{ rotate: `${i * (360 / N)}deg` }],
+            backgroundColor: color,
+          }} />
+        ))}
+        {cuts.length > 1 && cuts.slice(0, -1).map((c, i) => (
+          <View key={`sep${i}`} style={{
+            position: "absolute", width: 1.5, height: size,
+            left: size / 2 - 0.75, top: 0,
+            transform: [{ rotate: `${c.angle}deg` }],
+            backgroundColor: "#fff",
+          }} />
+        ))}
+      </View>
+      {labels.map((l, i) => l ? (
+        <Text key={`lb${i}`} style={{ position: "absolute", left: l.left, top: l.top, width: 48, textAlign: "center", fontSize: 13, fontWeight: "800", color: "#fff" }}>
+          {l.pct}%
+        </Text>
+      ) : null)}
+    </View>
+  );
+}
+
+function RecentGlucoseCard() {
+  const [range, setRange] = useState("48H");
+  const days = range === "24H" ? 1 : range === "48H" ? 2 : 7;
+  const values = MOCK_WEEK.slice(-days * 288).map((r) => r.cgm.glucose_mgdl);
+  const low = values.filter((g) => g < 72).length;
+  const high = values.filter((g) => g > 180).length;
+  const inRange = values.length - low - high;
+  const segments = [
+    { label: "Low", value: low, color: PIE_COLORS.low },
+    { label: "In Range", value: inRange, color: PIE_COLORS.inRange },
+    { label: "High", value: high, color: PIE_COLORS.high },
+  ];
+  return (
+    <Card>
+      <Text style={{ fontSize: 18, fontWeight: "800" }}>Recent Glucose Data</Text>
+      <Text style={s.dim}>Going back from 00:00 today</Text>
+      <View style={{ flexDirection: "row", gap: 6, alignSelf: "flex-end", marginVertical: 8 }}>
+        {["24H", "48H", "Week"].map((r) => (
+          <Pressable key={r} onPress={() => setRange(r)}
+            style={{ paddingHorizontal: 8, paddingBottom: 4,
+                     borderBottomWidth: 2, borderBottomColor: range === r ? "#111" : "transparent" }}>
+            <Text style={{ fontWeight: "700", color: range === r ? "#111" : "#999" }}>{r}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+        <PieChart segments={segments} />
+        <View style={{ gap: 10, flex: 1 }}>
+          {segments.map((seg) => (
+            <View key={seg.label} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: seg.color }} />
+              <Text style={{ flex: 1, fontSize: 13 }}>{seg.label}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "700" }}>{Math.round(100 * seg.value / (values.length || 1))}%</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      <Pressable accessibilityRole="button" style={{ marginTop: 12 }}>
+        <Text style={{ fontWeight: "700" }}>Update glucose tresholds ▸</Text>
+      </Pressable>
+    </Card>
+  );
+}
+
+function TIRCalendar() {
+  const [monthOffset, setMonthOffset] = useState(0);
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const monthLabel = base.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  const firstDow = (base.getDay() + 6) % 7; // Monday-first
+  const daysInMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+  // Deterministic TIR per day (mock) — stable per date.
+  const dayTir = (d) => {
+    let seed = (base.getFullYear() * 372 + base.getMonth() * 31 + d * 7) % 2147483647;
+    seed = (seed * 48271 + 11) % 2147483647;
+    return 45 + (seed % 55); // 45–99 %
+  };
+  const cells = [
+    ...Array.from({ length: firstDow }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  return (
+    <Card>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <Pressable accessibilityRole="button" onPress={() => setMonthOffset((m) => m - 1)}>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: "#555" }}>‹</Text>
+        </Pressable>
+        <Text style={{ fontSize: 17, fontWeight: "800" }}>{monthLabel}</Text>
+        <Pressable accessibilityRole="button" onPress={() => setMonthOffset((m) => Math.min(0, m + 1))}>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: monthOffset >= 0 ? "#ccc" : "#555" }}>›</Text>
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: "row", marginBottom: 6 }}>
+        {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+          <View key={d} style={{ width: `${100 / 7}%`, alignItems: "center" }}>
+            <Text style={{ fontSize: 13, fontWeight: "700" }}>{d}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+        {cells.map((d, i) => {
+          if (d == null) return <View key={`e${i}`} style={{ width: `${100 / 7}%`, height: 46 }} />;
+          const date = new Date(base.getFullYear(), base.getMonth(), d);
+          const isFuture = date > now;
+          const isToday = date.toDateString() === now.toDateString();
+          const tir = dayTir(d);
+          return (
+            <View key={d} style={{
+              width: `${100 / 7}%`, height: 46, alignItems: "center", justifyContent: "center",
+              gap: 3, backgroundColor: isToday ? "#000" : "transparent",
+              opacity: isFuture ? 0.35 : 1,
+            }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: isToday ? "#fff" : "#333" }}>{d}</Text>
+                {!isFuture && <View style={{
+                  width: 7, height: 7, borderRadius: 3.5,
+                  backgroundColor: tir >= 70 ? PIE_COLORS.inRange : "#E57368",
+                  marginTop: -6,
+                }} />}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+      <View style={{ flexDirection: "row", gap: 14, marginTop: 8, justifyContent: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: PIE_COLORS.inRange }} />
+          <Text style={s.dim}>above 70% TIR</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E57368" }} />
+          <Text style={s.dim}>below 70% TIR</Text>
+        </View>
+      </View>
+    </Card>
+  );
 }
 
 function RecommendationsCard() {
@@ -325,6 +507,8 @@ function Insights() {
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={{ padding: 14, gap: 12 }}>
+      <RecentGlucoseCard />
+      <TIRCalendar />
       <Card title="Glucose — last 24 hours">
         {pts.length < 2 ? (
           <Text style={s.dim}>waiting for readings…</Text>
