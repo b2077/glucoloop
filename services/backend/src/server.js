@@ -3,6 +3,24 @@
  * Start:  node src/server.js   (no npm install needed)
  */
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+
+// Load .env if present (zero-dep; never overrides real env vars; .env is gitignored).
+// Skipped under `node --test` so tests can force mock mode via env.
+const entry = process.argv[1] || "";
+const isTest = process.env.NODE_ENV === "test" || entry.endsWith(".test.js") ||
+               entry.includes(`${path.sep}test${path.sep}`);
+try {
+  if (isTest) throw new Error("test mode");
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  }
+} catch { /* .env is optional */ }
 import { Store } from "./state.js";
 import { runAgent } from "./agent/mistral.js";
 import { DASHBOARD_HTML } from "./dashboard.js";
