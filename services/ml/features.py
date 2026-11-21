@@ -1,5 +1,7 @@
-"""Frozen feature builder for GlucoLoop — SINGLE SOURCE OF TRUTH.
-Used by both train.py and predict_api.py so features can never drift.
+"""Glucose history and device features for training and live prediction.
+
+train.py builds one row per simulated time point; predict_api.py builds the same
+25 features from the latest twelve device readings. Both use only that window.
 
 Feature vector (frozen at kickoff):
     g0..g11   last 12 CGM readings (60 min, forward-filled through dropouts)
@@ -16,18 +18,29 @@ Feature vector (frozen at kickoff):
     cgm_flag  1 if CGM drift/dropout within last 15 min
     pump_flag 1 if pump fault within last 15 min
 """
+
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 FEATURES = [
     *[f"g{i}" for i in range(12)],
-    "roc15", "iob", "basal_cmd", "hr", "activity", "tod_sin", "tod_cos",
-    "carbs3h", "ex2h", "sleeph", "stress", "cgm_flag", "pump_flag",
+    "roc15",
+    "iob",
+    "basal_cmd",
+    "hr",
+    "activity",
+    "tod_sin",
+    "tod_cos",
+    "carbs3h",
+    "ex2h",
+    "sleeph",
+    "stress",
+    "cgm_flag",
+    "pump_flag",
 ]
 
 _ACTIVITY = {"none": 0, "light": 1, "moderate": 2, "intense": 3}
@@ -54,7 +67,7 @@ def _num_or_none(x):
         return None
 
 
-def features_from_window(win: list[dict]) -> Optional[list[float]]:
+def features_from_window(win: list[dict]) -> list[float] | None:
     """Serving path: newest-last window (>=1 rows) of 5-min step dicts with keys
     glucose_mgdl, cgm_quality, hr, activity, iob, commanded_basal, pump_status,
     carbs_g_3h, exercise_min_2h, sleep_hours_last, stress_1_5, t|minute_of_day."""
@@ -78,13 +91,18 @@ def features_from_window(win: list[dict]) -> Optional[list[float]]:
     return [
         *gg,
         (g[-1] - g[-4]) if len(g) >= 4 else 0.0,
-        num("iob", 0.0), num("commanded_basal", 1.0), num("hr", 70.0),
+        num("iob", 0.0),
+        num("commanded_basal", 1.0),
+        num("hr", 70.0),
         float(_ACTIVITY.get(last.get("activity", "none"), 0)),
         math.sin(2 * math.pi * mod / 1440.0),
         math.cos(2 * math.pi * mod / 1440.0),
-        num("carbs_g_3h", 0.0), num("exercise_min_2h", 0.0),
-        num("sleep_hours_last", 7.0), num("stress_1_5", 1.0),
-        cgm_flag, pump_flag,
+        num("carbs_g_3h", 0.0),
+        num("exercise_min_2h", 0.0),
+        num("sleep_hours_last", 7.0),
+        num("stress_1_5", 1.0),
+        cgm_flag,
+        pump_flag,
     ]
 
 
@@ -93,9 +111,12 @@ def features_from_df(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for sid, grp in df.groupby("scenario_id"):
         grp = grp.sort_values("t").reset_index(drop=True)
-        g = grp["cgm_glucose"].ffill().bfill()
-        f = pd.DataFrame({f"g{i}": g.shift(i) for i in range(12)}).bfill()
-        f["roc15"] = g - g.shift(3)
+        f = pd.DataFrame({f"g{i}": grp["cgm_glucose"].shift(i) for i in range(12)})
+        # Columns run newest to oldest within each historical window. Fill from
+        # older readings, then pad its beginning, exactly as live serving does.
+        # Neither operation can read a later time point or an earlier scenario.
+        f = f.bfill(axis=1).ffill(axis=1)
+        f["roc15"] = f["g0"] - f["g3"]
         f["iob"] = grp["iob"]
         f["basal_cmd"] = grp["commanded_basal"]
         f["hr"] = grp["hr"]
@@ -112,8 +133,18 @@ def features_from_df(df: pd.DataFrame) -> pd.DataFrame:
         f["cgm_flag"] = bad_cgm.rolling(3, min_periods=1).max().astype(int)
         f["pump_flag"] = bad_pump.rolling(3, min_periods=1).max().astype(int)
         f["scenario_id"] = sid
-        for c in ("action_label", "t", "f_g_t5", "f_g_t15", "f_g_t30", "f_g_t45",
-                  "f_g_t60", *[f"b{i}_{s}" for i in range(6) for s in ("min", "max")]):
+        for c in (
+            "action_label",
+            "t",
+            "f_g_t5",
+            "f_g_t15",
+            "f_g_t30",
+            "f_g_t45",
+            "f_g_t60",
+            *[f"b{i}_{s}" for i in range(6) for s in ("min", "max")],
+        ):
             f[c] = grp[c].values if c in grp.columns else np.nan
-        rows.append(f.iloc[12:])   # skip first hour (insufficient history)
+        # Live serving rejects an entirely missing window; evaluate the same cases.
+        available = f.iloc[12:]
+        rows.append(available.loc[available["g0"].notna()])
     return pd.concat(rows, ignore_index=True)

@@ -1,0 +1,16 @@
+{
+  "models": 18,
+  "requests": 100,
+  "failures": 0,
+  "warmup_requests": 5,
+  "cold_start_ms": 901.02,
+  "python": "3.12.12",
+  "platform": "Linux-5.15.146.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "prediction_threads": 1,
+  "target_p95_ms": 100,
+  "workload": "Sequential HTTP requests on localhost; synthetic 12-reading window",
+  "p50_ms": 7.7,
+  "p95_ms": 10.94,
+  "p99_ms": 16.72,
+  "max_ms": 17.15
+}

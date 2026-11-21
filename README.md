@@ -18,7 +18,7 @@ explainable pump recommendation.** Hackathon draft, built to run end-to-end.
 ## Quickstart (4 terminals)
 
 ```bash
-# 1) ML service (stdlib, no install) — from services/ml
+# 1) ML service — from services/ml, after installing requirements.txt and training
 python predict_api.py                      # :8101  (or: uvicorn predict_api:app --port 8101)
 
 # 2) Backend fusion + agent (zero-dep Node 18+) — from services/backend
@@ -35,9 +35,31 @@ EXPO_PUBLIC_API_URL=http://<your-lan-ip>:8100 npx expo start
 Optional retrain from scratch:
 
 ```bash
-cd services/simulator && python generate_dataset.py --n-train 24 --n-eval 6 --days 3
-cd services/ml && python train.py          # rewrites artifacts/ and docs/METRICS.md
+(cd services/simulator && python generate_dataset.py --n-train 24 --n-eval 6 --days 3)
+(cd services/ml && OMP_NUM_THREADS=2 python -u train.py)  # rewrites models and docs/METRICS.md
 ```
+
+Use Python 3.11 or newer and install `services/ml/requirements.txt` in your Python
+environment. Training fits eighteen models: five forecast horizons, twelve
+envelope models (minimum and maximum for six blocks), and one action classifier.
+`services/ml/config.toml` shares their layout between training and serving.
+It also sets four training workers, two threads per worker, and one prediction
+thread. `OMP_NUM_THREADS` can override the training thread limit. Each worker
+prints its effective limits, and completed models are saved immediately.
+
+Training rejects shared scenario identifiers between its two datasets. Features
+use only the latest twelve readings, with matching dropout handling during
+training and prediction. The held-out results are in `docs/METRICS.md`.
+Generated models remain local in `services/ml/artifacts/` and must be trained
+before starting the prediction service.
+
+From `services/ml`, run `python -m unittest discover -p 'test_*.py'` for the model
+selection, feature chronology, scenario isolation and CPU-limit regression tests.
+Run `python benchmark.py` to start an isolated local prediction server, measure
+100 sequential HTTP predictions after five warmups, and save `docs/LATENCY.json`.
+The benchmark stops its own server. Its configured 100 ms target is a local
+95th-percentile goal, meaning 95% of measured requests should finish within it.
+It does not measure simultaneous clients, the mobile app or the chat model.
 
 ## The ML (what the models do)
 
@@ -74,6 +96,12 @@ trajectory and the recommended action.
   both call the identical tool implementations.
 - Action policy trained on simulated physiology: a draft "learned safe policy",
   not a clinical instrument. Keep the "recommend + patient approves" framing.
+- The current training dataset has only three action classes. The classifier
+  cannot produce suspension or correction-bolus recommendations. Overall
+  accuracy is insufficient evidence for those missing actions.
+- Envelope error does not establish that its predicted quantiles have the
+  intended tail coverage. The simulator's block labels start at the current
+  reading and have a five-minute offset from strictly future windows.
 - `iob` is deviation-from-basal equilibrium (documented in the simulator).
 
 ## Safety stance

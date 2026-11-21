@@ -7,33 +7,38 @@ POST /predict
 Run (preferred):   uvicorn predict_api:app --port 8101
 Run (zero deps):   python predict_api.py          (http.server fallback)
 """
+
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 
-import numpy as np
 import joblib
-
+import numpy as np
 from features import features_from_window
+from settings import CONFIG
+from threadpoolctl import threadpool_limits
 
 ART = Path(__file__).resolve().parent / "artifacts"
-MODEL_NAMES = ["t5", "t60"]  # endpoints only; t15/t30/t45 interpolated
-MEDIUM_MINUTES = [5, 15, 30, 45, 60]
+LOGGER = logging.getLogger(__name__)
+MEDIUM_MINUTES = CONFIG["models"]["forecast_minutes"]
+MODEL_NAMES = [f"t{minutes}" for minutes in MEDIUM_MINUTES]
 
 
 class Predictor:
     def __init__(self):
         self.points = {n: joblib.load(ART / f"point_{n}.joblib") for n in MODEL_NAMES}
         self.blocks = {}
-        for b in range(6):
+        for b in range(CONFIG["models"]["block_count"]):
             for stat in ("min", "max"):
                 f = ART / f"block_{b}_{stat}.joblib"
-                if f.exists():
-                    self.blocks[(b, stat)] = joblib.load(f)
+                self.blocks[(b, stat)] = joblib.load(f)
         self.action = joblib.load(ART / "action_policy.joblib")
         self.meta = json.loads((ART / "meta.json").read_text())
+        # Loading joblib models initializes sklearn; limit its pools afterwards.
+        threadpool_limits(limits=CONFIG["runtime"]["prediction_threads"])
 
     def predict(self, payload: dict) -> dict:
         win = payload.get("readings") or []
@@ -43,43 +48,43 @@ class Predictor:
         row = np.array([fv], dtype=float)
 
         short = float(self.points["t5"].predict(row)[0])
-        long_end = float(self.points["t60"].predict(row)[0])
-        # linear interpolation between the two trained endpoint horizons
-        medium = [{"minutes": m,
-                   "point": round(short + (long_end - short) * (m - 5) / 55.0, 1)}
-                  for m in MEDIUM_MINUTES]
+        medium = [
+            {
+                "minutes": m,
+                "point": round(float(self.points[f"t{m}"].predict(row)[0]), 1),
+            }
+            for m in MEDIUM_MINUTES
+        ]
 
         long_blocks = []
-        for b in range(6):
-            if (b, "min") in self.blocks:
-                q10 = float(self.blocks[(b, "min")].predict(row)[0])
-                q90 = float(self.blocks[(b, "max")].predict(row)[0])
-            elif b == 0:
-                continue
-            else:  # odd block: interpolate between neighboring trained even blocks
-                lo = self.blocks.get((b - 1, "min"))
-                hi = self.blocks.get((b + 1, "min"))
-                if lo is None or hi is None:
-                    continue
-                q10 = (float(lo.predict(row)[0]) + float(hi.predict(row)[0])) / 2
-                lo = self.blocks.get((b - 1, "max"))
-                hi = self.blocks.get((b + 1, "max"))
-                q90 = (float(lo.predict(row)[0]) + float(hi.predict(row)[0])) / 2
-            long_blocks.append({
-                "window_start_h": 4 * b, "window_end_h": 4 * (b + 1),
-                "min_q10": round(q10, 1), "max_q90": round(q90, 1),
-                "risk": "high" if q10 < 75 or q90 > 220 else "normal",
-            })
+        for b in range(CONFIG["models"]["block_count"]):
+            q10 = float(self.blocks[(b, "min")].predict(row)[0])
+            q90 = float(self.blocks[(b, "max")].predict(row)[0])
+            long_blocks.append(
+                {
+                    "window_start_h": CONFIG["models"]["block_hours"] * b,
+                    "window_end_h": CONFIG["models"]["block_hours"] * (b + 1),
+                    "min_q10": round(q10, 1),
+                    "max_q90": round(q90, 1),
+                    "risk": "high" if q10 < 75 or q90 > 220 else "normal",
+                }
+            )
 
         proba = self.action.predict_proba(row)[0]
         idx = int(np.argmax(proba))
         action = {
             "class": str(self.action.classes_[idx]),
-            "probs": {str(c): round(float(p), 3) for c, p in zip(self.action.classes_, proba)},
+            "probs": {
+                str(c): round(float(p), 3) for c, p in zip(self.action.classes_, proba)
+            },
         }
-        return {"short": {"minutes": 5, "point": round(short, 1)},
-                "medium": medium, "long": long_blocks,
-                "action": action, "model_version": "draft-1"}
+        return {
+            "short": {"minutes": 5, "point": round(short, 1)},
+            "medium": medium,
+            "long": long_blocks,
+            "action": action,
+            "model_version": "draft-1",
+        }
 
 
 P = None
@@ -104,6 +109,7 @@ try:
             _get_predictor()
             return {"status": "up", "models": "loaded"}
         except Exception as exc:
+            LOGGER.exception("Model health check failed")
             return JSONResponse({"status": "degraded", "error": str(exc)}, 500)
 
     @app.post("/predict")
@@ -127,6 +133,7 @@ def _serve_stdlib(port: int = 8101):
                     _get_predictor()
                     self._json({"status": "up", "models": "loaded (stdlib mode)"}, 200)
                 except Exception as exc:
+                    LOGGER.exception("Model health check failed")
                     self._json({"status": "degraded", "error": str(exc)}, 500)
             else:
                 self._json({"error": "not found"}, 404)
@@ -141,6 +148,7 @@ def _serve_stdlib(port: int = 8101):
             except ValueError as exc:
                 self._json({"error": str(exc)}, 400)
             except Exception as exc:
+                LOGGER.exception("Prediction request failed")
                 self._json({"error": str(exc)}, 500)
 
         def _json(self, obj, code):
@@ -159,4 +167,4 @@ def _serve_stdlib(port: int = 8101):
 
 
 if __name__ == "__main__":
-    _serve_stdlib(int(os.environ.get("PORT", 8101)))
+    _serve_stdlib(int(os.environ.get("PORT", "8101")))

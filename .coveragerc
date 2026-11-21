@@ -1,0 +1,9 @@
+[run]
+source = services/ml
+branch = True
+omit = services/ml/test_*.py
+
+[report]
+precision = 2
+show_missing = True
+fail_under = 40.52
