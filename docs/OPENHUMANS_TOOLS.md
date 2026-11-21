@@ -68,3 +68,60 @@ responses and meals already affect the observed trajectory. Forecast evaluation
 must split people or time periods before learning personal coefficients, and
 must not use future device predictions, treatments or event information that
 would have been unavailable when making a forecast.
+
+## Mayo Clinic reference and the paper supplied in screenshots
+
+Checked 2026-11-21. The supplied
+[Mayo diagnosis and treatment page](https://www.mayoclinic.org/diseases-conditions/diabetes/diagnosis-treatment/drc-20371451)
+is clinical guidance, not a downloadable training dataset. Its two-hour
+140/199/200 mg/dL discussion concerns a fasting glucose-tolerance test followed
+by a sugary drink. The screenshot generalises this to an ordinary meal, which
+is not the test described. Do not turn those diagnostic thresholds into labels
+for routine sensor readings or targets for people already using insulin.
+The page identifies relevant influences but supplies no universal response
+coefficient or time course for a forecast.
+
+The related
+[Mayo lifestyle guidance](https://www.mayoclinic.org/diseases-conditions/diabetes/in-depth/diabetes-management/art-20047963)
+supports the following qualitative context. These are candidate inputs, not
+estimated numerical effects:
+
+| Context | Supported interpretation | What our project still needs |
+| --- | --- | --- |
+| Food | Carbohydrates can raise glucose; composition and quantity matter. | Meal timing, quantity and insulin context. |
+| Prolonged stress | Hormonal responses may raise glucose. | A defined stress measure and repeated observations. |
+| Periods | Hormonal changes can produce glucose swings. | Dated personal observations across cycles. |
+| Menopause | Changes warrant attention to glucose patterns. | Relevant cohort data; no fixed menopause multiplier. |
+| Alcohol | Delayed glucose lowering is possible. | Timing, amount, food and medication context. |
+
+For exercise, the
+[American Diabetes Association](https://diabetes.org/health-wellness/fitness/exercise-and-type-1)
+explains that responses depend on starting glucose, intensity, duration and
+insulin. Glucose can fall, but intense activity can also raise it. A demo must
+therefore not encode every workout as a fixed percentage decrease. Sleep
+remains a candidate input from our broader dataset review, not a calibrated
+coefficient established by these pages.
+
+For sensor summaries, the
+[CDC's continuous-monitor guidance](https://www.cdc.gov/diabetes/treatment/continuous-glucose-monitors.html)
+describes 70–180 mg/dL as a common target range. This is a different use from
+diagnosing diabetes. Individual targets can differ; these references do not
+justify silently changing the application's existing thresholds.
+
+The screenshot's
+[Shahid and Lewis 2022 paper](https://www.mdpi.com/2072-6643/14/9/1906)
+analyses the same OpenAPS Data Commons, not a second independent dataset. Its
+122-person snapshot contains glucose, treatment and algorithm records. Its
+data-availability section links the public GV-demographics scripts we inspected,
+not an unrestricted patient-data download. Its methods cover duplicate times,
+missing values and device error codes, and report glucose range percentages,
+mean and variability. The paper caps some readings at 400 mg/dL; that is a
+study-specific cleaning decision, not a rule to copy across devices.
+
+For the demonstration, use these sources to explain selected factors and
+measurement definitions. Keep any numerical response curve explicitly labelled
+as a simulation assumption until measured records support its size and timing.
+Later, evaluate personal adaptation on observations held out from learning.
+Neither a plausible chart nor improved historical glucose summaries establish
+an appropriate insulin response. This update changes documentation only;
+no thresholds, forecasts, dosing behaviour or data access have changed.
