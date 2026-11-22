@@ -1,0 +1,21 @@
+[models]
+forecast_minutes = [5, 15, 30, 45, 60]
+block_count = 6
+block_hours = 4
+
+[runtime]
+training_workers = 4
+training_threads = 2
+prediction_threads = 1
+
+[benchmark]
+port = 18101
+warmup_requests = 5
+measured_requests = 100
+target_p95_ms = 100
+
+[integration]
+backend_port = 18110
+ml_port = 18111
+stream_minutes = 185
+acceleration = 3600

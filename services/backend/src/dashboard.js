@@ -53,6 +53,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 </head>
 <body>
 <h1>🩺 GlucoLoop Backend Dashboard</h1>
+<p><a href="/demo" style="color:var(--blue)">Explore the simulated forecast personalisation demo</a></p>
 <p class="sub">Live view of ingested data, REST API, agent, and patient state — auto-refreshes every 5s</p>
 
 <div class="grid">

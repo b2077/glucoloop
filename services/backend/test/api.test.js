@@ -50,6 +50,21 @@ describe("REST API", () => {
     assert.ok("store" in body);
   });
 
+  test("simulation page and its calculation/configuration assets are served", async () => {
+    const html = await fetch(base + "/demo").then(r => r.text());
+    assert.match(html, /Simulation only/);
+    assert.match(html, /not use the eighteen trained models/);
+    assert.match(html, /\/demo\/model.js/);
+    const model = await fetch(base + "/demo/model.js");
+    assert.equal(model.status, 200);
+    assert.match(model.headers.get("content-type"), /text\/javascript/);
+    const { body: config } = await get("/demo/config.json");
+    assert.ok(config.scenarios.exercise.initial_delta_mgdl < 0);
+    assert.ok(config.scenarios.intense.initial_delta_mgdl > 0);
+    const dashboard = await fetch(base + "/dashboard").then(r => r.text());
+    assert.match(dashboard, /href="\/demo"/);
+  });
+
   test("POST /ingest with valid reading", async () => {
     const { status, body } = await post("/ingest", {
       patient_id: "api-test", type: "cgm", t: 0,
@@ -102,6 +117,13 @@ describe("REST API", () => {
     assert.equal(status, 200);
     assert.ok(typeof body.reply === "string");
     assert.ok(Array.isArray(body.toolCalls));
+  });
+
+  test("POST /chat preserves Unicode JSON replies", async () => {
+    const { status, body } = await post("/chat/api-test", { message: "I slept 7.5 hours" });
+    assert.equal(status, 200);
+    assert.ok(body.reply.includes("—"));
+    assert.deepEqual(body.toolCalls, ["log_checkin", "predict"]);
   });
 
   test("GET unknown path → 404", async () => {

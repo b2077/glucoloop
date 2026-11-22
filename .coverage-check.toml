@@ -1,0 +1,7 @@
+[check]
+python = ["uv", "run", "--offline", "--with", "numpy", "--with", "pandas", "--with", "scikit-learn", "--with", "joblib", "python3"]
+test_module = "unittest"
+# The separate real-worker regression needs subprocesses, which this gate blocks.
+test_args = ["discover", "-s", "services/ml", "-p", "test_[fp]*.py", "-v"]
+timeout_seconds = 30
+coverage_config = ".coveragerc"

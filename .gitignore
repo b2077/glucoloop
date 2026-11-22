@@ -6,4 +6,5 @@ data/generated/
 data/tune/
 *.log
 .expo/
+services/ml/artifacts/
 services/scenario/*.jsonl
